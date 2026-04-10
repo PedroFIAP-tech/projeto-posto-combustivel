@@ -27,6 +27,7 @@ model Order {
   id               Int      @id @default(autoincrement())
   total_value      Float
   liters_delivered Float
+  status           String @default("PENDENTE") // PENDENTE OU PAGO
   created_at       DateTime @default(now())
 
   // Relacionamentos

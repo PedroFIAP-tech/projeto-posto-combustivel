@@ -1,98 +1,106 @@
 import express from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
+import jwt from 'jsonwebtoken';
+import cors from 'cors';
 
 const app = express();
 
-// Configuração necessária para o Prisma 7
+// Configuração Prisma 7
 const connectionString = "postgresql://admin:posto123@localhost:5432/posto_combustivel?schema=public";
 const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter }); // Agora ele não está mais vazio!
+const prisma = new PrismaClient({ adapter });
 
+// Middlewares (Sempre no topo!)
+app.use(cors()); 
 app.use(express.json());
 
-
 const PORT = 3000;
+const SECRET = 'SuaChaveSecretaSuperSegura';
 
-// Rota para buscar todos os combustíveis do banco
-app.get('/combustiveis', async (req, res) => {
+// --- MIDDLEWARE DE SEGURANÇA ---
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: "Token não fornecido" });
+
+  const [, token] = authHeader.split(' ');
   try {
-    const fuels = await prisma.fuel.findMany();
-    res.json(fuels);
+    const decoded = jwt.verify(token, SECRET);
+    (req as any).userId = (decoded as any).userId;
+    return next(); 
+  } catch (err) {
+    return res.status(401).json({ error: "Token inválido" });
+  }
+};
+
+// --- ROTAS DE MONITORAMENTO (PARA O REACT) ---
+
+// 1. Busca pedidos que a bomba enviou mas não foram pagos
+app.get('/pedidos/pendentes', async (req, res) => {
+  try {
+    const pending = await prisma.order.findMany({
+      where: { status: "PENDENTE" },
+      include: { fuel: true } // Traz os dados do combustível junto
+    });
+    res.json(pending);
   } catch (error) {
-    res.status(500).json({ error: "Erro ao buscar combustíveis" });
+    res.status(500).json({ error: "Erro ao buscar pendentes" });
   }
 });
 
-// Rota para Simular Abastecimento
-app.post('/simular', async (req, res) => {
-  const { fuel_id, value } = req.body;
-
+// 2. Muda o status para PAGO (Libera a bomba no React)
+app.patch('/pedidos/:id/pagar', async (req, res) => {
+  const { id } = req.params;
   try {
-    // 1. Busca o combustível no banco pelo ID
-    const fuel = await prisma.fuel.findUnique({
-      where: { id: Number(fuel_id) }
+    await prisma.order.update({
+      where: { id: Number(id) },
+      data: { status: "PAGO" }
     });
+    res.json({ message: "Pagamento confirmado" });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao processar pagamento" });
+  }
+});
 
-    if (!fuel) {
-      return res.status(404).json({ error: "Combustível não encontrado" });
+// --- ROTAS EXISTENTES ---
+
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || user.password_hash !== password) {
+      return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
-    // 2. Faz o cálculo (Valor / Preço do Litro)
-    const liters = value / fuel.price_per_liter;
-
-    // 3. Retorna o resultado formatado
-    res.json({
-      combustivel: fuel.name,
-      preco_litro: fuel.price_per_liter,
-      valor_pago: value,
-      litros_calculados: liters.toFixed(3) // 3 casas decimais como no posto!
-    });
-
+    const token = jwt.sign({ userId: user.id }, SECRET, { expiresIn: '1d' });
+    res.json({ token, user: { name: user.name, email: user.email } });
   } catch (error) {
-    res.status(500).json({ error: "Erro ao processar simulação" });
+    res.status(500).json({ error: "Erro no login" });
   }
 });
 
-// Rota para Realizar o Abastecimento e SALVAR no banco
-app.post('/abastecer', async (req, res) => {
-  const { user_id, fuel_id, value } = req.body;
-
+app.post('/bomba/abastecer', async (req, res) => {
+  const { bomba_id, fuel_id, value, liters } = req.body;
   try {
-    // 1. Busca o combustível para saber o preço
-    const fuel = await prisma.fuel.findUnique({
-      where: { id: Number(fuel_id) }
-    });
-
-    if (!fuel) return res.status(404).json({ error: "Combustível inválido" });
-
-    // 2. Calcula os litros
-    const liters = value / fuel.price_per_liter;
-
-    // 3. SALVA no banco de dados
     const newOrder = await prisma.order.create({
       data: {
-        total_value: value,
-        liters_delivered: liters,
-        user_id: Number(user_id),
-        fuel_id: Number(fuel_id)
+        total_value: Number(value),
+        liters_delivered: Number(liters),
+        fuel_id: Number(fuel_id),
+        user_id: 1, 
+        status: "PENDENTE" 
       }
     });
-
-    res.json({
-      message: "Abastecimento registrado com sucesso!",
-      pedido: newOrder
-    });
-
+    console.log(`[BOMBA ${bomba_id}] Novo abastecimento pendente.`);
+    res.json(newOrder);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao registrar abastecimento" });
+    res.status(500).json({ error: "Erro na bomba" });
   }
 });
 
-// Mensagem de início do servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+  console.log(`🚀 Monitor de Pista rodando em http://localhost:${PORT}`);
 });
