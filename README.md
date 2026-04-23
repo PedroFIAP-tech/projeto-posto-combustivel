@@ -1,80 +1,103 @@
 
-----
+-----
 
-# ⛽ Sistema de Gestão de Posto de Combustível
+# ⛽ Sistema de Gestão de Posto de Combustível (Full Stack)
 
-Este é um projeto Full Stack desenvolvido para gerenciar o fluxo de abastecimento de um posto de combustível. O sistema permite calcular litros com base no valor pago, registrar vendas e gerenciar o estoque de preços de forma dinâmica.
+Este projeto é um sistema de automação e monitoramento de pista para postos de combustível. Ele simula o recebimento de dados das bombas em tempo real, permitindo que o frentista gerencie abastecimentos, realize cobranças e monitore o status de cada bico de combustível.
 
-## 🚀 Tecnologias Utilizadas
+## 📂 Estrutura do Projeto
 
-- **Node.js** & **TypeScript**: Base do servidor e tipagem de dados.
-- **Express**: Framework para construção da API.
-- **Prisma ORM**: Manipulação do banco de dados com segurança.
-- **PostgreSQL**: Banco de dados relacional.
-- **Docker**: Containerização do banco de dados para fácil ambiente de desenvolvimento.
+O repositório está dividido em duas partes principais:
 
-## 🛠️ Como rodar o projeto localmente
-
-### Pré-requisitos
-- Docker instalado.
-- Node.js instalado (v18 ou superior).
-
-### Passo a passo
-1. Clone o repositório:
-   ```bash
-   git clone https://github.com/PedroFIAP-tech/projeto-posto-combustivel.git
-````
-
-2.  Instale as dependências:
-    ```bash
-    npm install
-    ```
-3.  Suba o banco de dados com Docker:
-    ```bash
-    docker compose up -d
-    ```
-4.  Configure as tabelas (Migrations):
-    ```bash
-    npx prisma migrate dev
-    ```
-5.  Popule o banco com dados iniciais (Seed):
-    ```bash
-    npx prisma db seed
-    ```
-6.  Inicie o servidor:
-    ```bash
-    npm run dev
-    ```
-
-## 🔌 Rotas da API (Endpoints)
-
-  - `GET /combustiveis`: Retorna a lista de combustíveis e preços atuais.
-  - `POST /simular`: Recebe `fuel_id` e `value` para calcular a litragem.
-  - `POST /abastecer`: Registra uma venda no banco de dados.
+  - **Raiz (`/`)**: Servidor Back-end (Node.js + Prisma + PostgreSQL).
+  - **`/web`**: Interface Front-end (React.js + TypeScript).
 
 -----
 
-Desenvolvido por **Seu Nome** - [Seu LinkedIn](https://www.google.com/search?q=https://linkedin.com/in/seu-perfil)
+## 🛠️ Como rodar o Back-end (Servidor)
 
-````
+### 1\. Instale as dependências
 
----
-
-### Passo 3: Salvar e subir para o GitHub
-Depois de salvar o arquivo, rode estes comandos no terminal para atualizar o seu GitHub:
+Na pasta raiz do projeto, execute:
 
 ```bash
-git add README.md
-git commit -m "docs: adiciona readme profissional"
-git push
-````
+npm install
+```
+
+### 2\. Suba o Banco de Dados (Docker)
+
+Certifique-se de que o Docker Desktop está aberto e rode:
+
+```bash
+docker compose up -d
+```
+
+### 3\. Configure o Prisma e o Banco
+
+Execute as migrações para criar as tabelas e popule os dados iniciais (usuários e combustíveis):
+
+```bash
+npx prisma migrate dev
+npx prisma db seed
+```
+
+### 4\. Inicie o Servidor
+
+```bash
+npm run dev
+```
+
+O servidor rodará em `http://localhost:3000`.
 
 -----
 
-### Por que isso é importante?
+## 💻 Como rodar o Front-end (Web)
 
-Um README bem estruturado mostra que você domina o **ciclo de vida do software** (instalação, configuração, execução e documentação de rotas).
+### 1\. Acesse a pasta web
 
-**Dica Extra:** Se você quiser ser muito "pro", tire um print do seu **Beekeeper** mostrando as tabelas ou do **Thunder Client** mostrando o cálculo funcionando, e anexe no README depois. Isso prova que o sistema realmente roda\!
+```bash
+cd web
+```
 
-**Agora que a vitrine está pronta, como está o seu Kanban?** Mova o card de "Documentação" para **Done** e vamos escolher o próximo desafio técnico\! O que manda a sua lista?
+### 2\. Instale as dependências
+
+```bash
+npm install
+```
+
+### 3\. Inicie a aplicação
+
+```bash
+npm start
+```
+
+O Dashboard abrirá em `http://localhost:3001`.
+
+-----
+
+## 🔌 Principais Endpoints da API
+
+| Rota | Método | Descrição |
+| :--- | :--- | :--- |
+| `/login` | `POST` | Autentica usuário e retorna Token JWT. |
+| `/combustiveis` | `GET` | Lista todos os combustíveis e preços. |
+| `/bomba/abastecer` | `POST` | **Simula a Bomba:** Envia dados de abastecimento para o monitor. |
+| `/pedidos/pendentes` | `GET` | Busca abastecimentos aguardando pagamento. |
+| `/pedidos/:id/pagar` | `PATCH` | Finaliza a venda e libera a bomba. |
+
+-----
+
+## ✅ Funcionalidades Implementadas (Status)
+
+  - [x] **Task \#1**: Configuração de ambiente e Docker.
+  - [x] **Task \#2**: Modelagem de Banco de Dados (Prisma).
+  - [x] **Task \#3**: Sistema de Autenticação JWT.
+  - [x] **Task \#4**: Simulação de recebimento de dados da Bomba.
+  - [x] **Task \#5**: Dashboard de Monitoramento de Pista (Real-time Polling).
+  - [ ] **Task \#6**: Histórico de Vendas e Relatórios.
+
+-----
+
+Desenvolvido por **Pedro Silva** - [LinkedIn](https://www.google.com/search?q=https://linkedin.com/in/seu-perfil)
+
+-----
