@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 const DEFAULT_DATABASE_URL =
   'postgresql://admin:posto123@localhost:5432/posto_combustivel?schema=public';
 

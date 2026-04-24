@@ -11,7 +11,7 @@ model User {
   name          String
   email         String   @unique
   password_hash String
-  role          String   @default("customer") // admin ou customer
+  role          String   @default("frentista") // admin ou frentista
   orders        Order[]  @relation("UserOrders")
 }
 

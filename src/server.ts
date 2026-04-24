@@ -2,15 +2,11 @@ import cors from 'cors';
 import express from 'express';
 import { PORT } from './config';
 import { handleLogin } from './controllers/authController';
-import { handleListFuels } from './controllers/fuelController';
-import {
-  handleCreateOrder,
-  handleGetOrderHistory,
-  handleGetPendingOrders,
-  handlePayOrder,
-} from './controllers/orderController';
+import { handleCreateOrder } from './controllers/orderController';
 import { prisma } from './lib/prisma';
 import { authMiddleware } from './middlewares/authMiddleware';
+import fuelRoutes from './routes/fuelRoutes';
+import orderRoutes from './routes/orderRoutes';
 
 const app = express();
 
@@ -22,11 +18,9 @@ app.get('/health', (_req, res) => {
 });
 
 app.post('/login', handleLogin);
-app.get('/combustiveis', authMiddleware, handleListFuels);
+app.use('/combustiveis', fuelRoutes);
 app.post('/bomba/abastecer', authMiddleware, handleCreateOrder);
-app.get('/pedidos/pendentes', authMiddleware, handleGetPendingOrders);
-app.get('/pedidos/historico', authMiddleware, handleGetOrderHistory);
-app.patch('/pedidos/:id/pagar', authMiddleware, handlePayOrder);
+app.use('/pedidos', orderRoutes);
 
 app.use((_req, res) => {
   return res.status(404).json({ error: 'Rota nao encontrada.' });

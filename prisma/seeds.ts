@@ -1,74 +1,76 @@
-import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs'
-
-const databaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://admin:posto123@localhost:5432/posto_combustivel?schema=public'
-
-const adapter = new PrismaPg(databaseUrl)
-const prisma = new PrismaClient({ adapter })
+import 'dotenv/config';
+import bcrypt from 'bcryptjs';
+import { prisma } from '../src/lib/prisma';
 
 async function main() {
-  const fuels = [
-    { name: 'Gasolina Comum', price_per_liter: 5.89 },
-    { name: 'Gasolina Aditivada', price_per_liter: 6.05 },
-    { name: 'Etanol', price_per_liter: 3.99 },
-    { name: 'Diesel S10', price_per_liter: 6.12 },
-  ]
+  console.log('Iniciando sincronizacao de dados base...');
 
-  for (const fuel of fuels) {
-    const existingFuel = await prisma.fuel.findFirst({
-      where: {
-        name: fuel.name,
-      },
-    })
+  const hash = await bcrypt.hash('123456', 10);
 
-    if (existingFuel) {
-      await prisma.fuel.update({
-        where: {
-          id: existingFuel.id,
+  const users = [
+    {
+      email: 'admin@posto.com',
+      name: 'Administrador',
+      role: 'admin',
+    },
+    {
+      email: 'frentista@posto.com',
+      name: 'Frentista',
+      role: 'frentista',
+    },
+  ];
+
+  await Promise.all(
+    users.map((user) =>
+      prisma.user.upsert({
+        where: { email: user.email },
+        update: {
+          name: user.name,
+          password_hash: hash,
+          role: user.role,
         },
-        data: {
-          price_per_liter: fuel.price_per_liter,
+        create: {
+          email: user.email,
+          name: user.name,
+          password_hash: hash,
+          role: user.role,
         },
       })
-      continue
-    }
+    )
+  );
 
-    await prisma.fuel.create({
-      data: fuel,
+  const fuels = [
+    { name: 'Gasolina Comum', price: 5.89 },
+    { name: 'Gasolina Aditivada', price: 6.09 },
+    { name: 'Etanol', price: 3.99 },
+    { name: 'Diesel S10', price: 5.95 },
+  ];
+
+  await Promise.all(
+    fuels.map(async (fuel) => {
+      const existing = await prisma.fuel.findFirst({ where: { name: fuel.name } });
+
+      if (existing) {
+        return prisma.fuel.update({
+          where: { id: existing.id },
+          data: { price_per_liter: fuel.price },
+        });
+      }
+
+      return prisma.fuel.create({
+        data: { name: fuel.name, price_per_liter: fuel.price },
+      });
     })
-  }
+  );
 
-  const passwordHash = await bcrypt.hash('123456', 10)
-
-  await prisma.user.upsert({
-    where: {
-      email: 'admin@posto.com',
-    },
-    update: {
-      name: 'Admin do Posto',
-      password_hash: passwordHash,
-      role: 'admin',
-    },
-    create: {
-      name: 'Admin do Posto',
-      email: 'admin@posto.com',
-      password_hash: passwordHash,
-      role: 'admin',
-    },
-  })
-
-  console.log('Banco de dados semeado com sucesso!')
+  console.log('Base de dados atualizada com admin, frentista e combustiveis.');
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect()
+  .catch((error) => {
+    console.error('Erro no seed:', error);
+    process.exit(1);
   })
-  .catch(async error => {
-    console.error(error)
-    await prisma.$disconnect()
-    process.exit(1)
-  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

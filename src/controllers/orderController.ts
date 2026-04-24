@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { isAdmin, isOperationalRole } from '../constants/roles';
 import { prisma } from '../lib/prisma';
 
 const orderDetails = {
@@ -26,12 +27,26 @@ const toPositiveNumber = (value: unknown) => {
   return parsed;
 };
 
+const getTodayRange = () => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return { start, end };
+};
+
 export const handleCreateOrder = async (req: Request, res: Response) => {
-  const fuelId = toPositiveNumber(req.body.fuelId);
-  const litersDelivered = toPositiveNumber(req.body.liters);
+  const fuelId = toPositiveNumber(req.body.fuelId ?? req.body.fuel_id);
+  const litersDelivered = toPositiveNumber(req.body.liters ?? req.body.liters_delivered);
 
   if (!req.userId) {
     return res.status(401).json({ error: 'Usuario nao autenticado.' });
+  }
+
+  if (!isOperationalRole(req.userRole)) {
+    return res.status(403).json({ error: 'Acesso negado para registrar abastecimento.' });
   }
 
   if (!fuelId || !litersDelivered) {
@@ -72,15 +87,14 @@ export const handleCreateOrder = async (req: Request, res: Response) => {
 };
 
 export const handleGetPendingOrders = async (req: Request, res: Response) => {
-  const where =
-    req.userRole === 'admin'
-      ? {
-          status: pendingStatus,
-        }
-      : {
-          status: pendingStatus,
-          user_id: req.userId,
-        };
+  if (!req.userId) {
+    return res.status(401).json({ error: 'Usuario nao autenticado.' });
+  }
+
+  const where = {
+    status: pendingStatus,
+    ...(isOperationalRole(req.userRole) ? {} : { user_id: req.userId }),
+  };
 
   try {
     const orders = await prisma.order.findMany({
@@ -99,6 +113,10 @@ export const handleGetPendingOrders = async (req: Request, res: Response) => {
 };
 
 export const handleGetOrderHistory = async (req: Request, res: Response) => {
+  if (!req.userId) {
+    return res.status(401).json({ error: 'Usuario nao autenticado.' });
+  }
+
   const statusQuery =
     typeof req.query.status === 'string' ? req.query.status.trim().toUpperCase() : undefined;
 
@@ -106,10 +124,20 @@ export const handleGetOrderHistory = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Status invalido. Use PENDENTE ou PAGO.' });
   }
 
+  const todayRange = getTodayRange();
+
   try {
     const orders = await prisma.order.findMany({
       where: {
-        ...(req.userRole === 'admin' ? {} : { user_id: req.userId }),
+        ...(isOperationalRole(req.userRole) ? {} : { user_id: req.userId }),
+        ...(isAdmin(req.userRole)
+          ? {}
+          : {
+              created_at: {
+                gte: todayRange.start,
+                lt: todayRange.end,
+              },
+            }),
         ...(statusQuery ? { status: statusQuery } : {}),
       },
       include: orderDetails,
@@ -128,6 +156,10 @@ export const handleGetOrderHistory = async (req: Request, res: Response) => {
 export const handlePayOrder = async (req: Request, res: Response) => {
   const orderId = toPositiveNumber(req.params.id);
 
+  if (!req.userId) {
+    return res.status(401).json({ error: 'Usuario nao autenticado.' });
+  }
+
   if (!orderId) {
     return res.status(400).json({ error: 'Informe um identificador de pedido valido.' });
   }
@@ -142,6 +174,12 @@ export const handlePayOrder = async (req: Request, res: Response) => {
 
     if (!existingOrder) {
       return res.status(404).json({ error: 'Pedido nao encontrado.' });
+    }
+
+    const canPay = isOperationalRole(req.userRole) || existingOrder.user_id === req.userId;
+
+    if (!canPay) {
+      return res.status(403).json({ error: 'Voce nao tem permissao para pagar este pedido.' });
     }
 
     if (existingOrder.status === paidStatus) {
@@ -163,4 +201,12 @@ export const handlePayOrder = async (req: Request, res: Response) => {
     console.error('Erro ao atualizar pedido:', error);
     return res.status(500).json({ error: 'Nao foi possivel atualizar o pedido.' });
   }
+};
+
+export const orderController = {
+  create: handleCreateOrder,
+  listPending: handleGetPendingOrders,
+  listHistory: handleGetOrderHistory,
+  listMyOrders: handleGetOrderHistory,
+  pay: handlePayOrder,
 };

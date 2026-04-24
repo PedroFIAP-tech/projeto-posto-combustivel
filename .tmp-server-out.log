@@ -1,0 +1,29 @@
+
+> projeto_posto@1.0.0 predev
+> npm run prisma:generate
+
+
+> projeto_posto@1.0.0 prisma:generate
+> prisma generate
+
+
+✔ Generated Prisma Client (v7.7.0) to .\node_modules\@prisma\client in 156ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+
+
+> projeto_posto@1.0.0 dev
+> nodemon --exec ts-node src/server.ts
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Servidor rodando em http://localhost:3000
+[32m[nodemon] clean exit - waiting for changes before restart[39m
+[32m[nodemon] restarting child process[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Servidor rodando em http://localhost:3000
+[32m[nodemon] clean exit - waiting for changes before restart[39m

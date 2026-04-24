@@ -87,6 +87,15 @@ O Dashboard abrirá em `http://localhost:3001`.
 
 -----
 
+## 👤 Usuários de Teste
+
+| Perfil | E-mail | Senha | Permissões |
+| :--- | :--- | :--- | :--- |
+| Admin | `admin@posto.com` | `123456` | Visualiza todos os pedidos e altera preços dos combustíveis. |
+| Frentista | `frentista@posto.com` | `123456` | Registra abastecimentos, vê seus próprios pedidos e finaliza pagamentos próprios. |
+
+-----
+
 ## ✅ Funcionalidades Implementadas (Status)
 
   - [x] **Task \#1**: Configuração de ambiente e Docker.
@@ -94,7 +103,21 @@ O Dashboard abrirá em `http://localhost:3001`.
   - [x] **Task \#3**: Sistema de Autenticação JWT.
   - [x] **Task \#4**: Simulação de recebimento de dados da Bomba.
   - [x] **Task \#5**: Dashboard de Monitoramento de Pista (Real-time Polling).
-  - [ ] **Task \#6**: Histórico de Vendas e Relatórios.
+  - [x] **Task \#6**: Histórico de Vendas no painel e na API.
+  - [ ] **Task \#7**: Relatórios gerenciais com filtros e exportação.
+
+-----
+
+## Próxima Task: Relatórios Gerenciais
+
+**Objetivo:** permitir que o gerente consulte vendas por período, combustível e status, com resumo de faturamento e volume vendido.
+
+**Critérios de aceite:**
+
+  - Criar filtros por data inicial, data final, combustível e status.
+  - Exibir totais de vendas, litros vendidos e ticket médio.
+  - Permitir exportar o relatório em CSV.
+  - Proteger a rota para uso de usuários `admin`.
 
 -----
 
