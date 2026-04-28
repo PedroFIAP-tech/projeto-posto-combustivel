@@ -54,6 +54,7 @@ Tela atualiza para o usuario
 ```txt
 PROJETO_vscode/
   backend-java/
+    Dockerfile
     pom.xml
     src/main/java/com/posto/
       PostoApplication.java
@@ -85,7 +86,7 @@ O backend Java e responsavel por toda a regra importante do sistema. Mesmo que o
 
 Ele faz estas tarefas:
 
-- Sobe a API do sistema na porta `3000`.
+- Sobe a API do sistema na porta definida por `PORT`; por padrao usa `8080`.
 - Recebe login e devolve um token JWT.
 - Protege rotas que precisam de usuario autenticado.
 - Busca usuarios no banco.
@@ -244,7 +245,7 @@ Ele define:
 Exemplo importante:
 
 ```properties
-server.port=${PORT:3000}
+server.port=${PORT:8080}
 spring.datasource.url=${DATABASE_URL:jdbc:postgresql://localhost:5432/posto_combustivel}
 ```
 
@@ -254,13 +255,19 @@ Isso significa: se nao existir variavel de ambiente, usa os valores padrao.
 
 Aqui ficam as migrations do Flyway.
 
-A migration `V1__init_schema.sql` cria as tabelas:
+A migration `V1__init_schema.sql` cria as tabelas iniciais:
 
 - `User`
 - `Fuel`
 - `Order`
 
 Tambem cria indices para melhorar buscas por status, data, usuario e combustivel.
+
+As migrations seguintes normalizam esses nomes para o padrao PostgreSQL usado pela aplicacao:
+
+- `users`
+- `fuels`
+- `orders`
 
 ## Principais regras de negocio
 
@@ -381,7 +388,14 @@ mvn spring-boot:run
 A API fica em:
 
 ```txt
-http://localhost:3000
+http://localhost:8080
+```
+
+Se quiser rodar localmente na porta antiga do projeto:
+
+```powershell
+$env:PORT=3000
+mvn spring-boot:run
 ```
 
 ### 3. Rodar o frontend
@@ -394,11 +408,36 @@ npm install
 npm start
 ```
 
-Como a API usa a porta `3000`, o React normalmente sugere abrir em outra porta, como:
+Como a API usa `8080` por padrao, o React normalmente abre em:
 
 ```txt
-http://localhost:3001
+http://localhost:3000
 ```
+
+Se o frontend estiver rodando em outra porta, ajuste `CORS_ALLOWED_ORIGINS` no backend.
+
+## Deploy no Render com Docker
+
+No Render, crie um Web Service com:
+
+```txt
+Language: Docker
+Root Directory: backend-java
+```
+
+Nao precisa preencher Build Command nem Start Command. O `backend-java/Dockerfile` ja compila o projeto com Maven e inicia o `.jar`.
+
+Configure as variaveis de ambiente do Render:
+
+```txt
+DATABASE_URL=jdbc:postgresql://HOST:PORTA/NOME_DO_BANCO
+DATABASE_USERNAME=USUARIO_DO_BANCO
+DATABASE_PASSWORD=SENHA_DO_BANCO
+JWT_SECRET=um-segredo-grande-e-seguro
+CORS_ALLOWED_ORIGINS=https://url-do-seu-frontend
+```
+
+O Render fornece a variavel `PORT` automaticamente. A aplicacao tambem tem default `8080`, que combina com o Dockerfile.
 
 ## Variaveis de ambiente
 
@@ -406,7 +445,7 @@ O backend aceita estas variaveis:
 
 | Variavel | Para que serve | Padrao |
 | :--- | :--- | :--- |
-| `PORT` | Porta da API Java. | `3000` |
+| `PORT` | Porta da API Java. | `8080` |
 | `DATABASE_URL` | URL JDBC do PostgreSQL. | `jdbc:postgresql://localhost:5432/posto_combustivel` |
 | `DATABASE_USERNAME` | Usuario do banco. | `admin` |
 | `DATABASE_PASSWORD` | Senha do banco. | `posto123` |
@@ -418,7 +457,7 @@ O frontend pode usar:
 
 | Variavel | Para que serve | Padrao |
 | :--- | :--- | :--- |
-| `REACT_APP_API_URL` | URL da API Java. | `http://localhost:3000` |
+| `REACT_APP_API_URL` | URL da API Java. | `http://localhost:8080` |
 
 ## Como testar
 
