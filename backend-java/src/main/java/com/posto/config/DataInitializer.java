@@ -63,7 +63,9 @@ public class DataInitializer {
     }
 
     private void upsertFuel(FuelSeed seed) {
-      Fuel fuel = fuelRepository.findByName(seed.name()).orElseGet(Fuel::new);
+      Fuel fuel = fuelRepository.findByNameOrderByIdAsc(seed.name()).stream()
+          .findFirst()
+          .orElseGet(Fuel::new);
       fuel.setName(seed.name());
       fuel.setPricePerLiter(seed.pricePerLiter());
       fuelRepository.save(fuel);

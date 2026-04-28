@@ -13,7 +13,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "\"Fuel\"")
+@Table(name = "fuels")
 public class Fuel {
 
   @Id
