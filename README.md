@@ -457,7 +457,7 @@ O frontend pode usar:
 
 | Variavel | Para que serve | Padrao |
 | :--- | :--- | :--- |
-| `REACT_APP_API_URL` | URL da API Java. | `http://localhost:8080` |
+| `REACT_APP_API_URL` | URL da API Java. | `https://projeto-posto-combustivel.onrender.com` |
 
 ## Como testar
 
