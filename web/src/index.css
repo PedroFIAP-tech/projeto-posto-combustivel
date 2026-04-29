@@ -749,6 +749,227 @@ button:disabled {
   text-align: center;
 }
 
+.analytics-dashboard {
+  display: grid;
+  gap: 14px;
+}
+
+.analytics-hero {
+  background:
+    linear-gradient(120deg, rgba(0, 102, 51, 0.96), rgba(0, 102, 51, 0.86)),
+    var(--green-900);
+  color: var(--white);
+  margin-bottom: 0;
+}
+
+.analytics-hero .dashboard-kicker,
+.analytics-hero p {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.analytics-hero .dashboard-live {
+  background: rgba(255, 255, 255, 0.13);
+  color: var(--yellow-500);
+}
+
+.analytics-hero .dashboard-live span {
+  background: var(--yellow-500);
+}
+
+.analytics-toolbar {
+  align-items: center;
+  background: var(--white);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.segmented-control {
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+}
+
+.segmented-control button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--gray-700);
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.segmented-control button.active {
+  background: var(--green-900);
+  color: var(--white);
+  box-shadow: 0 6px 16px rgba(0, 102, 51, 0.18);
+}
+
+.analytics-metrics {
+  margin-top: 0;
+}
+
+.analytics-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.75fr);
+}
+
+.analytics-main-panel {
+  min-height: 430px;
+}
+
+.chart-shell {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 230px;
+}
+
+.power-chart {
+  background:
+    linear-gradient(180deg, rgba(0, 102, 51, 0.04), rgba(255, 204, 0, 0.03)),
+    #fbfcfd;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  display: block;
+  min-height: 300px;
+  width: 100%;
+}
+
+.chart-grid-line {
+  stroke: #dfe5eb;
+  stroke-width: 1;
+}
+
+.chart-bar-group {
+  cursor: pointer;
+}
+
+.chart-bar {
+  fill: var(--green-700);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.chart-bar-group:hover .chart-bar,
+.chart-bar-active {
+  fill: var(--yellow-500);
+  opacity: 1;
+}
+
+.chart-bar-forecast {
+  fill: var(--orange-600);
+  opacity: 0.58;
+  stroke: var(--orange-600);
+  stroke-dasharray: 4 3;
+}
+
+.chart-label {
+  fill: var(--gray-500);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.chart-detail {
+  background: var(--green-900);
+  border-radius: 8px;
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 300px;
+  padding: 18px;
+}
+
+.chart-detail span,
+.chart-detail small {
+  color: rgba(255, 255, 255, 0.72);
+  display: block;
+}
+
+.chart-detail strong {
+  display: block;
+  font-size: 34px;
+  line-height: 1;
+  margin-top: 8px;
+}
+
+.chart-detail b {
+  color: var(--yellow-500);
+  display: block;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.chart-detail small {
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.forecast-panel {
+  min-height: 430px;
+}
+
+.forecast-list {
+  display: grid;
+  gap: 9px;
+}
+
+.forecast-row {
+  align-items: center;
+  background: #fbfcfd;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  color: var(--gray-950);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 56px minmax(0, 1fr) 74px;
+  min-height: 46px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.forecast-row:hover {
+  border-color: rgba(0, 102, 51, 0.36);
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
+}
+
+.forecast-row span {
+  color: var(--gray-500);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.forecast-row strong {
+  color: var(--green-700);
+  overflow-wrap: anywhere;
+}
+
+.forecast-row small {
+  color: var(--gray-500);
+  text-align: right;
+}
+
+.analytics-grid .fuel-mix-panel,
+.analytics-grid .manager-insights {
+  min-height: 330px;
+}
+
+.analytics-grid .attendants-panel {
+  grid-column: 1 / -1;
+}
+
 .section-title-row {
   gap: 12px;
   margin: 0 4px 14px;
@@ -933,6 +1154,26 @@ button:disabled {
     border-left: 0;
     padding-left: 0;
   }
+
+  .dashboard-header,
+  .analytics-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-metrics-grid,
+  .analytics-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-detail {
+    min-height: 180px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -950,5 +1191,28 @@ button:disabled {
 
   .user-chip {
     display: none;
+  }
+
+  .dashboard-metric strong,
+  .chart-detail strong {
+    font-size: 22px;
+  }
+
+  .segmented-control,
+  .segmented-control button {
+    width: 100%;
+  }
+
+  .segmented-control button {
+    flex: 1 1 42%;
+  }
+
+  .forecast-row {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .forecast-row small {
+    grid-column: 1 / -1;
+    text-align: left;
   }
 }

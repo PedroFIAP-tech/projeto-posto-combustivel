@@ -135,6 +135,7 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
   const [activeView, setActiveView] = useState<'rotina' | 'historico'>('rotina');
   const [pendentes, setPendentes] = useState<PumpOrder[]>([]);
   const [finalizados, setFinalizados] = useState<PumpOrder[]>([]);
+  const [historicoFinalizados, setHistoricoFinalizados] = useState<PumpOrder[]>([]);
   const [emAndamento] = useState<PumpOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -148,12 +149,10 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
 
     try {
       const [pendentesData, historicoData] = await Promise.all([getPendentes(), getHistorico()]);
+      const pagos = historicoData.filter((pedido) => pedido.status === 'PAGO').map(withPumpNumber);
       setPendentes(pendentesData.map(withPumpNumber));
-      setFinalizados(
-        historicoData
-          .filter((pedido) => pedido.status === 'PAGO' && isToday(pedido.created_at))
-          .map(withPumpNumber)
-      );
+      setHistoricoFinalizados(pagos);
+      setFinalizados(pagos.filter((pedido) => isToday(pedido.created_at)));
     } catch (_error) {
       setMessage('Nao foi possivel carregar a rotina do posto.');
     } finally {
@@ -264,10 +263,10 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
               {isHistoricoView ? <HistoryIcon /> : <FuelPumpIcon />}
             </span>
             <div>
-              <h1>{isHistoricoView ? 'Historico do Dia' : 'Rotina do Posto'}</h1>
+              <h1>{isHistoricoView ? 'Historico Inteligente' : 'Rotina do Posto'}</h1>
               <p>
                 {isHistoricoView
-                  ? 'Analise os resultados do dia com metricas gerenciais'
+                  ? 'Analise resultados passados e projecoes futuras'
                   : 'Acompanhe os abastecimentos em tempo real'}
               </p>
             </div>
@@ -328,7 +327,7 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
             <p className="empty-table">Carregando rotina do posto...</p>
           </section>
         ) : isHistoricoView ? (
-          <HistoricoDiaDashboard finalizados={finalizados} pendentes={pendentes} />
+          <HistoricoDiaDashboard finalizados={historicoFinalizados} pendentes={pendentes} />
         ) : (
           <>
             <BombasEmAndamento pedidos={emAndamento} />
