@@ -4,12 +4,15 @@ import logoMain from '../assets/logos/logo-principal.png';
 import { AguardandoPagamento } from '../components/AguardandoPagamento';
 import {
   ChartIcon,
-  ClipboardIcon,
+  CashIcon,
   DashboardIcon,
+  FileIcon,
   HelpIcon,
   HistoryIcon,
   LogOutIcon,
-  SettingsIcon,
+  ReceiptIcon,
+  ShieldIcon,
+  StockIcon,
   UsersIcon,
   WalletIcon,
 } from '../components/AppIcons';
@@ -62,14 +65,14 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
       items: [
         { label: 'Dashboard', icon: <DashboardIcon />, active: activeView === 'historico', view: 'historico' },
         { label: 'Rotina Posto', icon: <FuelPumpIcon />, active: activeView === 'rotina', view: 'rotina' },
-        { label: 'Pedidos Pendentes', href: '#pendentes', icon: <ClipboardIcon /> },
+        { label: 'Pedidos Pendentes', href: '#pendentes', icon: <ReceiptIcon /> },
         { label: 'Historico de Pedidos', href: '#finalizados', icon: <HistoryIcon /> },
       ],
     },
     {
       title: 'Financeiro',
       items: [
-        { label: 'Pagamentos', icon: <WalletIcon /> },
+        { label: 'Pagamentos', icon: <CashIcon /> },
         { label: 'Faturamento', icon: <ChartIcon /> },
         { label: 'Recebimentos', icon: <WalletIcon /> },
       ],
@@ -78,7 +81,7 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
       title: 'Cadastros',
       items: [
         { label: 'Clientes', icon: <UsersIcon /> },
-        { label: 'Combustiveis', icon: 'B' },
+        { label: 'Combustiveis', icon: <FuelPumpIcon /> },
         { label: 'Frentistas', icon: <UsersIcon /> },
         { label: 'Bombas', icon: <FuelPumpIcon /> },
       ],
@@ -87,7 +90,7 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
       title: 'Relatorios',
       items: [
         { label: 'Vendas', icon: <ChartIcon /> },
-        { label: 'Estoque', icon: <ClipboardIcon /> },
+        { label: 'Estoque', icon: <StockIcon /> },
         { label: 'Desempenho', icon: <DashboardIcon /> },
       ],
     },
@@ -95,8 +98,8 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
       title: 'Configuracoes',
       items: [
         { label: 'Usuarios', icon: <UsersIcon /> },
-        { label: 'Permissoes', icon: <SettingsIcon /> },
-        { label: 'Logs', icon: <ClipboardIcon /> },
+        { label: 'Permissoes', icon: <ShieldIcon /> },
+        { label: 'Logs', icon: <FileIcon /> },
       ],
     },
   ];
@@ -106,6 +109,11 @@ const withPumpNumber = (order: Order): PumpOrder => ({
   ...order,
   pumpNumber: String(((order.id - 1) % TOTAL_BOMBAS) + 1).padStart(2, '0'),
 });
+
+const upsertOrder = (orders: PumpOrder[], order: PumpOrder) => [
+  order,
+  ...orders.filter((current) => current.id !== order.id),
+];
 
 const isToday = (date: string) => {
   const value = new Date(date);
@@ -180,8 +188,17 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
     setMessage('');
 
     try {
-      await pagarPedido(id);
+      const paidOrder = withPumpNumber(await pagarPedido(id));
+      setPendentes((current) => current.filter((pedido) => pedido.id !== id));
+      setHistoricoFinalizados((current) => upsertOrder(current, paidOrder));
+      if (isToday(paidOrder.created_at)) {
+        setFinalizados((current) => upsertOrder(current, paidOrder));
+      }
       await carregarPedidos({ silent: true });
+      setHistoricoFinalizados((current) => upsertOrder(current, paidOrder));
+      if (isToday(paidOrder.created_at)) {
+        setFinalizados((current) => upsertOrder(current, paidOrder));
+      }
       setMessage('Pagamento finalizado com sucesso.');
     } catch (_error) {
       setMessage('Nao foi possivel finalizar o pagamento.');

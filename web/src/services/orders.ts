@@ -12,5 +12,6 @@ export const getHistorico = async () => {
 };
 
 export const pagarPedido = async (id: number) => {
-  await api.patch(`/pedidos/${id}/pagar`);
+  const response = await api.patch<Order>(`/pedidos/${id}/pagar`);
+  return response.data;
 };

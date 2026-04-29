@@ -14,6 +14,7 @@
   --gray-200: #e5e7eb;
   --gray-100: #f3f4f6;
   --white: #ffffff;
+  --app-font: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
@@ -28,7 +29,7 @@ body {
   margin: 0;
   background: #f7f9fb;
   color: var(--gray-950);
-  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-family: var(--app-font);
   font-size: 15px;
   font-weight: 400;
   letter-spacing: 0;
@@ -176,16 +177,16 @@ button:disabled {
 
 .routine-layout {
   display: grid;
-  grid-template-columns: 270px minmax(0, 1fr);
+  grid-template-columns: 286px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .routine-sidebar {
-  background: var(--green-900);
+  background: linear-gradient(180deg, #00592d 0%, #004624 100%);
   color: var(--white);
   display: flex;
   flex-direction: column;
-  padding: 24px 20px;
+  padding: 22px 18px;
   overflow-y: auto;
 }
 
@@ -194,11 +195,11 @@ button:disabled {
 }
 
 .sidebar-nav {
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: grid;
-  gap: 18px;
-  margin-top: 42px;
-  padding-top: 22px;
+  gap: 16px;
+  margin-top: 34px;
+  padding-top: 20px;
 }
 
 .menu-section {
@@ -207,11 +208,12 @@ button:disabled {
 }
 
 .menu-section-title {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.56);
   display: block;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 8px 14px 2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 8px 12px 3px;
   text-transform: uppercase;
 }
 
@@ -220,18 +222,26 @@ button:disabled {
   background: transparent;
   border: 0;
   border-radius: 8px;
-  color: var(--white);
+  color: rgba(255, 255, 255, 0.86);
   display: flex;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   gap: 12px;
-  min-height: 52px;
-  padding: 0 14px;
+  min-height: 46px;
+  padding: 0 12px;
   text-align: left;
   text-decoration: none;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
 }
 
 .sidebar-link-active {
   background: var(--yellow-500);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
   color: var(--green-900);
 }
 
@@ -255,8 +265,20 @@ button:disabled {
 }
 
 .nav-icon {
-  height: 24px;
-  width: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.86);
+  flex: 0 0 auto;
+  height: 30px;
+  width: 30px;
+}
+
+.sidebar-link:hover .nav-icon {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--white);
+}
+
+.sidebar-link-active .nav-icon {
+  background: rgba(0, 102, 51, 0.12);
 }
 
 .nav-icon svg,
@@ -267,8 +289,8 @@ button:disabled {
 .panel-title svg,
 .pump-icon svg {
   display: block;
-  height: 70%;
-  width: 70%;
+  height: 62%;
+  width: 62%;
 }
 
 .support-icon {
@@ -326,7 +348,9 @@ button:disabled {
 }
 
 .page-title h1 {
-  font-size: 28px;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: 0;
   margin: 0;
 }
 
@@ -415,7 +439,9 @@ button:disabled {
 
 .welcome-block h2,
 .section-title-row h2 {
-  font-size: 20px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0;
   margin: 0;
 }
 
@@ -1014,9 +1040,11 @@ button:disabled {
 .routine-table th {
   background: #f9fafb;
   color: #4b5563;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 800;
   padding: 12px 12px;
   text-align: left;
+  text-transform: uppercase;
 }
 
 .routine-table td {
