@@ -2,8 +2,6 @@ package com.posto.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -14,7 +12,6 @@ import com.posto.dto.CreateOrderRequest;
 import com.posto.dto.OrderResponse;
 import com.posto.entity.Order;
 import com.posto.entity.OrderStatus;
-import com.posto.entity.Role;
 import com.posto.exception.ApiException;
 import com.posto.repository.FuelRepository;
 import com.posto.repository.OrderRepository;
@@ -24,8 +21,6 @@ import com.posto.security.SecuritySupport;
 
 @Service
 public class OrderService {
-
-  private static final ZoneId DEFAULT_ZONE = ZoneId.of("America/Sao_Paulo");
 
   private final OrderRepository orderRepository;
   private final FuelRepository fuelRepository;
@@ -75,15 +70,14 @@ public class OrderService {
   @Transactional(readOnly = true)
   public List<OrderResponse> pending() {
     AuthenticatedUser user = securitySupport.currentUser();
-    List<Order> orders;
 
-    if (user.role() == Role.ADMIN || user.role() == Role.FRENTISTA) {
-      orders = orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.PENDENTE);
-    } else {
-      orders = orderRepository.findByUserIdAndStatusOrderByCreatedAtDesc(user.id(), OrderStatus.PENDENTE);
+    if (!securitySupport.isOperational(user)) {
+      throw new ApiException(HttpStatus.FORBIDDEN, "Acesso negado para consultar pedidos pendentes.");
     }
 
-    return orders.stream().map(OrderResponse::from).toList();
+    return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.PENDENTE).stream()
+        .map(OrderResponse::from)
+        .toList();
   }
 
   @Transactional(readOnly = true)
@@ -91,29 +85,19 @@ public class OrderService {
     AuthenticatedUser user = securitySupport.currentUser();
     OrderStatus orderStatus = parseStatus(status);
 
-    if (user.role() == Role.ADMIN || user.role() == Role.FRENTISTA) {
-      if (orderStatus != null) {
-        return orderRepository.findByStatusOrderByCreatedAtDesc(orderStatus).stream()
-            .map(OrderResponse::from)
-            .toList();
-      }
+    if (!securitySupport.isOperational(user)) {
+      throw new ApiException(HttpStatus.FORBIDDEN, "Acesso negado para consultar historico.");
+    }
 
-      return orderRepository.findAllByOrderByCreatedAtDesc().stream()
+    if (orderStatus != null) {
+      return orderRepository.findByStatusOrderByCreatedAtDesc(orderStatus).stream()
           .map(OrderResponse::from)
           .toList();
     }
 
-    var today = LocalDate.now(DEFAULT_ZONE);
-    var start = today.atStartOfDay(DEFAULT_ZONE).toInstant();
-    var end = today.plusDays(1).atStartOfDay(DEFAULT_ZONE).toInstant();
-
-    List<Order> orders = orderStatus == null
-        ? orderRepository.findByUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
-            user.id(), start, end)
-        : orderRepository.findByUserIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
-            user.id(), orderStatus, start, end);
-
-    return orders.stream().map(OrderResponse::from).toList();
+    return orderRepository.findAllByOrderByCreatedAtDesc().stream()
+        .map(OrderResponse::from)
+        .toList();
   }
 
   @Transactional
@@ -123,9 +107,7 @@ public class OrderService {
     var order = orderRepository.findById(id)
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Pedido nao encontrado."));
 
-    boolean canPay = user.role() == Role.ADMIN || user.role() == Role.FRENTISTA || order.getUser().getId().equals(user.id());
-
-    if (!canPay) {
+    if (!securitySupport.isOperational(user)) {
       throw new ApiException(HttpStatus.FORBIDDEN, "Voce nao tem permissao para pagar este pedido.");
     }
 

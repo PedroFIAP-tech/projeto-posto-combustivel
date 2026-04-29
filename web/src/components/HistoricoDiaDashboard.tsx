@@ -1,11 +1,24 @@
-import { useMemo, useState } from 'react';
+import { type ComponentType, useMemo, useState } from 'react';
 import {
-  ChartIcon,
-  ClipboardIcon,
-  DashboardIcon,
-  UsersIcon,
-  WalletIcon,
-} from './AppIcons';
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Line,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { ChartIcon, ReceiptIcon, UsersIcon, WalletIcon } from './AppIcons';
 import { FuelPumpIcon } from './FuelPumpIcon';
 import { PumpOrder } from '../types';
 
@@ -19,6 +32,7 @@ type RankingItem = {
   pedidos: number;
   litros: number;
   valor: number;
+  share: number;
 };
 
 type DailyPoint = {
@@ -33,6 +47,9 @@ type DailyPoint = {
 
 type PeriodOption = '7' | '30' | '90' | 'all';
 type MetricOption = 'valor' | 'litros' | 'pedidos';
+
+const COLORS = ['#006633', '#ffcc00', '#f26a21', '#2563eb', '#7c3aed', '#0891b2'];
+const GaugePolarAngleAxis = PolarAngleAxis as unknown as ComponentType<any>;
 
 const metricLabels: Record<MetricOption, string> = {
   valor: 'Faturamento',
@@ -81,15 +98,20 @@ const addDays = (date: Date, days: number) => {
 const sumBy = (orders: PumpOrder[], selector: (order: PumpOrder) => number) =>
   orders.reduce((total, order) => total + selector(order), 0);
 
+const sumByDaily = (points: DailyPoint[], key: MetricOption) =>
+  points.reduce((total, point) => total + point[key], 0);
+
 const groupRanking = (orders: PumpOrder[], getLabel: (order: PumpOrder) => string): RankingItem[] => {
   const grouped = new Map<string, RankingItem>();
+  const total = sumBy(orders, (order) => order.total_value);
 
   orders.forEach((order) => {
     const label = getLabel(order);
-    const current = grouped.get(label) ?? { label, pedidos: 0, litros: 0, valor: 0 };
+    const current = grouped.get(label) ?? { label, pedidos: 0, litros: 0, valor: 0, share: 0 };
     current.pedidos += 1;
     current.litros += order.liters_delivered;
     current.valor += order.total_value;
+    current.share = total ? (current.valor / total) * 100 : 0;
     grouped.set(label, current);
   });
 
@@ -118,6 +140,11 @@ const getDailySeries = (orders: PumpOrder[]): DailyPoint[] => {
   });
 
   return Array.from(grouped.values()).sort((a, b) => a.key.localeCompare(b.key));
+};
+
+const clampTrend = (diff: number, base: number) => {
+  const limit = Math.max(base * 0.18, 1);
+  return Math.max(Math.min(diff / 7, limit), -limit);
 };
 
 const getForecast = (series: DailyPoint[], days = 7): DailyPoint[] => {
@@ -166,15 +193,13 @@ const getForecast = (series: DailyPoint[], days = 7): DailyPoint[] => {
   });
 };
 
-const sumByDaily = (points: DailyPoint[], key: MetricOption) =>
-  points.reduce((total, point) => total + point[key], 0);
+const getChange = (current: number, previous: number) => {
+  if (!previous) {
+    return current ? 100 : 0;
+  }
 
-const clampTrend = (diff: number, base: number) => {
-  const limit = Math.max(base * 0.18, 1);
-  return Math.max(Math.min(diff / 7, limit), -limit);
+  return ((current - previous) / previous) * 100;
 };
-
-const getMetricValue = (point: DailyPoint, metric: MetricOption) => point[metric];
 
 const formatMetric = (value: number, metric: MetricOption) => {
   if (metric === 'valor') {
@@ -188,18 +213,26 @@ const formatMetric = (value: number, metric: MetricOption) => {
   return `${formatNumber(value)} pedidos`;
 };
 
-const getChange = (current: number, previous: number) => {
-  if (!previous) {
-    return current ? 100 : 0;
+const getMetricValue = (point: DailyPoint, metric: MetricOption) => point[metric];
+
+const tooltipFormatter = (value: any, name: any): [string, string] => {
+  const numeric = Number(value);
+  const label = String(name);
+
+  if (label.toLowerCase().includes('litro')) {
+    return [formatLiters(numeric), label];
   }
 
-  return ((current - previous) / previous) * 100;
+  if (label.toLowerCase().includes('pedido')) {
+    return [formatNumber(numeric), label];
+  }
+
+  return [formatCurrency(numeric), label];
 };
 
 export function HistoricoDiaDashboard({ finalizados, pendentes }: HistoricoDiaDashboardProps) {
   const [period, setPeriod] = useState<PeriodOption>('30');
   const [metric, setMetric] = useState<MetricOption>('valor');
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const sortedOrders = useMemo(
     () => [...finalizados].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
@@ -214,290 +247,289 @@ export function HistoricoDiaDashboard({ finalizados, pendentes }: HistoricoDiaDa
 
     return fullSeries.slice(-Number(period));
   }, [fullSeries, period]);
-  const chartSeries = useMemo(() => [...visibleSeries, ...forecast], [forecast, visibleSeries]);
-  const selectedPoint = chartSeries.find((point) => point.key === selectedKey) ?? visibleSeries[visibleSeries.length - 1];
+  const forecastKeys = new Set(forecast.map((point) => point.key));
+  const chartSeries = [...visibleSeries, ...forecast].map((point) => ({
+    ...point,
+    realValor: point.forecast ? null : point.valor,
+    forecastValor: point.forecast ? point.valor : null,
+    realMetric: point.forecast ? null : getMetricValue(point, metric),
+    forecastMetric: point.forecast ? getMetricValue(point, metric) : null,
+    tipo: forecastKeys.has(point.key) ? 'Previsao' : 'Real',
+  }));
 
   const faturamentoPeriodo = sumByDaily(visibleSeries, 'valor');
   const litrosPeriodo = sumByDaily(visibleSeries, 'litros');
   const pedidosPeriodo = sumByDaily(visibleSeries, 'pedidos');
   const valorPendente = sumBy(pendentes, (order) => order.total_value);
   const ticketMedio = pedidosPeriodo ? faturamentoPeriodo / pedidosPeriodo : 0;
-  const precoMedioLitro = litrosPeriodo ? faturamentoPeriodo / litrosPeriodo : 0;
   const previousWindow = fullSeries.slice(Math.max(fullSeries.length - visibleSeries.length * 2, 0), fullSeries.length - visibleSeries.length);
-  const previousRevenue = sumByDaily(previousWindow, 'valor');
-  const revenueChange = getChange(faturamentoPeriodo, previousRevenue);
+  const revenueChange = getChange(faturamentoPeriodo, sumByDaily(previousWindow, 'valor'));
   const forecastRevenue = sumByDaily(forecast, 'valor');
-  const forecastLiters = sumByDaily(forecast, 'litros');
   const forecastOrders = sumByDaily(forecast, 'pedidos');
-  const rankingCombustiveis = groupRanking(sortedOrders, (order) => order.fuel.name);
-  const rankingFrentistas = groupRanking(sortedOrders, (order) => order.user.name);
-  const maiorValorCombustivel = Math.max(...rankingCombustiveis.map((item) => item.valor), 1);
-  const maxChartValue = Math.max(...chartSeries.map((point) => getMetricValue(point, metric)), 1);
+  const rankingCombustiveis = groupRanking(sortedOrders, (order) => order.fuel.name).slice(0, 6);
+  const rankingFrentistas = groupRanking(sortedOrders, (order) => order.user.name).slice(0, 6);
+  const bestFuel = rankingCombustiveis[0];
+  const bestAttendant = rankingFrentistas[0];
   const bestDay = [...visibleSeries].sort((a, b) => b.valor - a.valor)[0];
-  const lastSale = sortedOrders[sortedOrders.length - 1];
+  const gaugeValue = Math.min(Math.max(revenueChange + 50, 0), 100);
+  const radialData = [{ name: 'Performance', value: gaugeValue, fill: revenueChange >= 0 ? '#006633' : '#f26a21' }];
 
   return (
-    <section className="day-dashboard analytics-dashboard" id="historico-dia">
-      <div className="dashboard-header analytics-hero">
+    <section className="day-dashboard analytics-dashboard analytics-dashboard-pro" id="historico-dia">
+      <div className="analytics-command-center">
         <div>
-          <span className="dashboard-kicker">Historico inteligente</span>
-          <h2>Central de performance e previsao</h2>
-          <p>Resultados de todos os dias, leitura do mix, ranking da equipe e previsao dos proximos 7 dias.</p>
+          <span className="dashboard-kicker">Historico do dia</span>
+          <h2>Graficos e estatisticas do posto</h2>
+          <p>Uma leitura visual de faturamento, volume, mix de combustiveis, equipe e previsao.</p>
         </div>
-        <div className="dashboard-live">
-          <span />
-          Dados do Render
-        </div>
-      </div>
-
-      <div className="analytics-toolbar" aria-label="Filtros do dashboard">
-        <div className="segmented-control">
-          {(['7', '30', '90', 'all'] as PeriodOption[]).map((option) => (
-            <button
-              className={period === option ? 'active' : ''}
-              key={option}
-              onClick={() => setPeriod(option)}
-              type="button"
-            >
-              {option === 'all' ? 'Tudo' : `${option} dias`}
-            </button>
-          ))}
-        </div>
-        <div className="segmented-control">
-          {(['valor', 'litros', 'pedidos'] as MetricOption[]).map((option) => (
-            <button
-              className={metric === option ? 'active' : ''}
-              key={option}
-              onClick={() => setMetric(option)}
-              type="button"
-            >
-              {metricLabels[option]}
-            </button>
-          ))}
+        <div className="analytics-filter-stack">
+          <div className="segmented-control segmented-control-dark">
+            {(['7', '30', '90', 'all'] as PeriodOption[]).map((option) => (
+              <button
+                className={period === option ? 'active' : ''}
+                key={option}
+                onClick={() => setPeriod(option)}
+                type="button"
+              >
+                {option === 'all' ? 'Tudo' : `${option} dias`}
+              </button>
+            ))}
+          </div>
+          <div className="segmented-control segmented-control-dark">
+            {(['valor', 'litros', 'pedidos'] as MetricOption[]).map((option) => (
+              <button
+                className={metric === option ? 'active' : ''}
+                key={option}
+                onClick={() => setMetric(option)}
+                type="button"
+              >
+                {metricLabels[option]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="dashboard-metrics-grid analytics-metrics">
-        <article className="dashboard-metric dashboard-metric-primary">
-          <span className="metric-card-icon">
+      <div className="analytics-scoreboard">
+        <article className="analytics-kpi analytics-kpi-hero">
+          <span className="analytics-kpi-icon">
             <WalletIcon />
           </span>
-          <small>Faturamento no periodo</small>
+          <small>Faturamento do periodo</small>
           <strong>{formatCurrency(faturamentoPeriodo)}</strong>
-          <p>{revenueChange >= 0 ? '+' : ''}{formatNumber(revenueChange)}% contra a janela anterior</p>
+          <p className={revenueChange >= 0 ? 'trend-positive' : 'trend-negative'}>
+            {revenueChange >= 0 ? '+' : ''}{formatNumber(revenueChange)}% vs janela anterior
+          </p>
         </article>
 
-        <article className="dashboard-metric">
-          <span className="metric-card-icon metric-card-icon-green">
+        <article className="analytics-kpi">
+          <span className="analytics-kpi-icon analytics-kpi-green">
             <FuelPumpIcon />
           </span>
-          <small>Volume vendido</small>
+          <small>Litros vendidos</small>
           <strong>{formatLiters(litrosPeriodo)}</strong>
-          <p>Preco medio de {formatCurrency(precoMedioLitro)} por litro</p>
+          <p>{formatNumber(pedidosPeriodo)} vendas pagas</p>
         </article>
 
-        <article className="dashboard-metric">
-          <span className="metric-card-icon metric-card-icon-yellow">
+        <article className="analytics-kpi">
+          <span className="analytics-kpi-icon analytics-kpi-yellow">
             <ChartIcon />
           </span>
           <small>Previsao 7 dias</small>
           <strong>{formatCurrency(forecastRevenue)}</strong>
-          <p>{formatLiters(forecastLiters)} em {formatNumber(forecastOrders)} vendas estimadas</p>
+          <p>{formatNumber(forecastOrders)} vendas estimadas</p>
         </article>
 
-        <article className="dashboard-metric">
-          <span className="metric-card-icon metric-card-icon-orange">
-            <ClipboardIcon />
+        <article className="analytics-kpi">
+          <span className="analytics-kpi-icon analytics-kpi-orange">
+            <ReceiptIcon />
           </span>
-          <small>Carteira em aberto</small>
+          <small>Aguardando pagamento</small>
           <strong>{formatCurrency(valorPendente)}</strong>
-          <p>{pendentes.length} pagamentos ainda pendentes</p>
+          <p>{pendentes.length} pedidos abertos</p>
         </article>
       </div>
 
-      <div className="analytics-grid">
-        <article className="dashboard-panel analytics-main-panel">
-          <div className="panel-title">
+      <div className="analytics-pro-grid">
+        <article className="analytics-card analytics-card-xl">
+          <div className="analytics-card-header">
             <div>
-              <span>Serie historica + previsao</span>
-              <h3>{metricLabels[metric]} por dia</h3>
+              <span>Serie temporal</span>
+              <h3>{metricLabels[metric]} real e previsto</h3>
             </div>
-            <DashboardIcon />
+            <strong>{formatMetric(sumByDaily(visibleSeries, metric), metric)}</strong>
           </div>
-
-          <div className="chart-shell">
-            <svg aria-label={`Grafico de ${metricLabels[metric]}`} className="power-chart" viewBox="0 0 760 300">
-              <defs>
-                <linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#006633" stopOpacity="0.24" />
-                  <stop offset="100%" stopColor="#006633" stopOpacity="0.02" />
-                </linearGradient>
-              </defs>
-              {[0, 1, 2, 3].map((line) => (
-                <line className="chart-grid-line" key={line} x1="34" x2="738" y1={45 + line * 58} y2={45 + line * 58} />
-              ))}
-              {chartSeries.map((point, index) => {
-                const chartWidth = 690;
-                const barGap = 7;
-                const barWidth = Math.max(chartWidth / Math.max(chartSeries.length, 1) - barGap, 8);
-                const x = 44 + index * (chartWidth / Math.max(chartSeries.length, 1));
-                const height = Math.max((getMetricValue(point, metric) / maxChartValue) * 190, point.forecast ? 10 : 6);
-                const y = 242 - height;
-
-                return (
-                  <g className="chart-bar-group" key={point.key} onClick={() => setSelectedKey(point.key)}>
-                    <rect
-                      className={`chart-bar${point.forecast ? ' chart-bar-forecast' : ''}${selectedPoint?.key === point.key ? ' chart-bar-active' : ''}`}
-                      height={height}
-                      rx="4"
-                      width={barWidth}
-                      x={x}
-                      y={y}
-                    />
-                    {index % Math.ceil(chartSeries.length / 8 || 1) === 0 ? (
-                      <text className="chart-label" x={x + barWidth / 2} y="274">
-                        {point.label}
-                      </text>
-                    ) : null}
-                  </g>
-                );
-              })}
-            </svg>
-
-            <div className="chart-detail">
-              <span>{selectedPoint?.forecast ? 'Previsao selecionada' : 'Dia selecionado'}</span>
-              <strong>{selectedPoint ? selectedPoint.label : 'Sem dados'}</strong>
-              <div>
-                <b>{selectedPoint ? formatMetric(getMetricValue(selectedPoint, metric), metric) : formatMetric(0, metric)}</b>
-                <small>
-                  {selectedPoint
-                    ? `${formatCurrency(selectedPoint.valor)} | ${formatLiters(selectedPoint.litros)} | ${selectedPoint.pedidos} vendas`
-                    : 'Nenhum movimento encontrado'}
-                </small>
-              </div>
-            </div>
+          <div className="analytics-chart analytics-chart-large">
+            <ResponsiveContainer height="100%" width="100%">
+              <AreaChart data={chartSeries} margin={{ bottom: 0, left: 0, right: 12, top: 14 }}>
+                <defs>
+                  <linearGradient id="realMetricFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#006633" stopOpacity={0.32} />
+                    <stop offset="100%" stopColor="#006633" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="forecastMetricFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#f26a21" stopOpacity={0.24} />
+                    <stop offset="100%" stopColor="#f26a21" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#e8edf2" strokeDasharray="4 4" vertical={false} />
+                <XAxis axisLine={false} dataKey="label" minTickGap={18} tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} />
+                <YAxis axisLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(value) => metric === 'valor' ? formatCompactCurrency(Number(value)) : formatNumber(Number(value))} tickLine={false} width={72} />
+                <Tooltip formatter={tooltipFormatter} labelClassName="analytics-tooltip-label" wrapperClassName="analytics-tooltip" />
+                <Area dataKey="realMetric" fill="url(#realMetricFill)" name={metricLabels[metric]} stroke="#006633" strokeWidth={3} type="monotone" />
+                <Area dataKey="forecastMetric" fill="url(#forecastMetricFill)" name={`${metricLabels[metric]} previsto`} stroke="#f26a21" strokeDasharray="7 5" strokeWidth={3} type="monotone" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </article>
 
-        <article className="dashboard-panel forecast-panel">
-          <div className="panel-title">
+        <article className="analytics-card analytics-card-gauge">
+          <div className="analytics-card-header">
             <div>
-              <span>Previsao</span>
-              <h3>Proximos dias</h3>
+              <span>Ritmo comercial</span>
+              <h3>Performance</h3>
             </div>
-            <ChartIcon />
           </div>
-
-          <div className="forecast-list">
-            {forecast.map((point) => (
-              <button className="forecast-row" key={point.key} onClick={() => setSelectedKey(point.key)} type="button">
-                <span>{point.label}</span>
-                <strong>{formatCompactCurrency(point.valor)}</strong>
-                <small>{formatNumber(point.pedidos)} vendas</small>
-              </button>
-            ))}
-            {forecast.length === 0 ? <p className="dashboard-empty">Sem base historica para prever.</p> : null}
+          <div className="analytics-gauge">
+            <ResponsiveContainer height={210} width="100%">
+              <RadialBarChart data={radialData} endAngle={0} innerRadius="72%" outerRadius="100%" startAngle={180}>
+                <GaugePolarAngleAxis domain={[0, 100]} tick={false} type="number" />
+                <RadialBar background cornerRadius={12} dataKey="value" />
+              </RadialBarChart>
+            </ResponsiveContainer>
+            <div className="analytics-gauge-value">
+              <strong>{revenueChange >= 0 ? '+' : ''}{formatNumber(revenueChange)}%</strong>
+              <span>comparativo</span>
+            </div>
           </div>
-        </article>
-
-        <article className="dashboard-panel fuel-mix-panel">
-          <div className="panel-title">
+          <div className="analytics-mini-list">
             <div>
-              <span>Mix consolidado</span>
-              <h3>Combustiveis por faturamento</h3>
-            </div>
-            <FuelPumpIcon />
-          </div>
-
-          <div className="fuel-mix-list">
-            {rankingCombustiveis.map((item) => (
-              <div className="fuel-mix-item" key={item.label}>
-                <div className="fuel-mix-row">
-                  <strong>{item.label}</strong>
-                  <span>{formatCurrency(item.valor)}</span>
-                </div>
-                <div className="fuel-mix-track">
-                  <span style={{ width: `${Math.max((item.valor / maiorValorCombustivel) * 100, 5)}%` }} />
-                </div>
-                <div className="fuel-mix-meta">
-                  <span>{formatLiters(item.litros)}</span>
-                  <span>{item.pedidos} vendas</span>
-                </div>
-              </div>
-            ))}
-            {rankingCombustiveis.length === 0 ? (
-              <p className="dashboard-empty">Ainda nao ha vendas pagas no historico.</p>
-            ) : null}
-          </div>
-        </article>
-
-        <article className="dashboard-panel manager-insights">
-          <div className="panel-title">
-            <div>
-              <span>Leitura executiva</span>
-              <h3>O que mudou</h3>
-            </div>
-            <WalletIcon />
-          </div>
-
-          <div className="insight-list">
-            <div className="insight-item">
               <span>Ticket medio</span>
               <strong>{formatCurrency(ticketMedio)}</strong>
             </div>
-            <div className="insight-item">
-              <span>Melhor dia no periodo</span>
-              <strong>{bestDay ? `${bestDay.label} - ${formatCurrency(bestDay.valor)}` : 'Sem dados'}</strong>
-            </div>
-            <div className="insight-item">
-              <span>Combustivel lider</span>
-              <strong>{rankingCombustiveis[0]?.label ?? 'Sem dados'}</strong>
-            </div>
-            <div className="insight-item">
-              <span>Ultima venda paga</span>
-              <strong>{lastSale ? `${formatDay(new Date(lastSale.created_at))} - ${formatCurrency(lastSale.total_value)}` : 'Sem dados'}</strong>
+            <div>
+              <span>Melhor dia</span>
+              <strong>{bestDay ? `${bestDay.label} - ${formatCompactCurrency(bestDay.valor)}` : 'Sem dados'}</strong>
             </div>
           </div>
         </article>
 
-        <article className="dashboard-panel attendants-panel">
-          <div className="panel-title">
+        <article className="analytics-card">
+          <div className="analytics-card-header">
+            <div>
+              <span>Mix de combustiveis</span>
+              <h3>Participacao por receita</h3>
+            </div>
+          </div>
+          <div className="analytics-donut-layout">
+            <ResponsiveContainer height={230} width="100%">
+              <PieChart>
+                <Pie data={rankingCombustiveis} dataKey="valor" innerRadius={62} outerRadius={92} paddingAngle={3}>
+                  {rankingCombustiveis.map((item, index) => (
+                    <Cell fill={COLORS[index % COLORS.length]} key={item.label} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={tooltipFormatter} wrapperClassName="analytics-tooltip" />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="analytics-legend">
+              {rankingCombustiveis.map((item, index) => (
+                <div key={item.label}>
+                  <i style={{ background: COLORS[index % COLORS.length] }} />
+                  <span>{item.label}</span>
+                  <strong>{formatNumber(item.share)}%</strong>
+                </div>
+              ))}
+              {rankingCombustiveis.length === 0 ? <p className="dashboard-empty">Sem vendas pagas.</p> : null}
+            </div>
+          </div>
+        </article>
+
+        <article className="analytics-card">
+          <div className="analytics-card-header">
+            <div>
+              <span>Top combustiveis</span>
+              <h3>Receita e volume</h3>
+            </div>
+          </div>
+          <div className="analytics-chart">
+            <ResponsiveContainer height="100%" width="100%">
+              <BarChart data={rankingCombustiveis} layout="vertical" margin={{ bottom: 0, left: 8, right: 18, top: 4 }}>
+                <CartesianGrid horizontal={false} stroke="#e8edf2" />
+                <XAxis axisLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(value) => formatCompactCurrency(Number(value))} tickLine={false} type="number" />
+                <YAxis axisLine={false} dataKey="label" tick={{ fill: '#334155', fontSize: 12 }} tickLine={false} type="category" width={94} />
+                <Tooltip formatter={tooltipFormatter} wrapperClassName="analytics-tooltip" />
+                <Bar dataKey="valor" name="Faturamento" radius={[0, 8, 8, 0]}>
+                  {rankingCombustiveis.map((item, index) => (
+                    <Cell fill={COLORS[index % COLORS.length]} key={item.label} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        <article className="analytics-card analytics-card-xl">
+          <div className="analytics-card-header">
+            <div>
+              <span>Operacao diaria</span>
+              <h3>Faturamento, litros e pedidos</h3>
+            </div>
+          </div>
+          <div className="analytics-chart">
+            <ResponsiveContainer height="100%" width="100%">
+              <ComposedChart data={visibleSeries} margin={{ bottom: 0, left: 0, right: 12, top: 14 }}>
+                <CartesianGrid stroke="#e8edf2" strokeDasharray="4 4" vertical={false} />
+                <XAxis axisLine={false} dataKey="label" minTickGap={18} tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} />
+                <YAxis axisLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(value) => formatCompactCurrency(Number(value))} tickLine={false} width={72} />
+                <Tooltip formatter={tooltipFormatter} wrapperClassName="analytics-tooltip" />
+                <Bar dataKey="valor" fill="#006633" name="Faturamento" radius={[8, 8, 0, 0]} />
+                <Line dataKey="ticket" dot={false} name="Ticket medio" stroke="#f26a21" strokeWidth={3} type="monotone" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        <article className="analytics-card">
+          <div className="analytics-card-header">
             <div>
               <span>Equipe</span>
-              <h3>Ranking por frentista</h3>
+              <h3>Ranking visual</h3>
             </div>
             <UsersIcon />
           </div>
-
-          <div className="ranking-table-shell">
-            <table className="ranking-table">
-              <thead>
-                <tr>
-                  <th>Frentista</th>
-                  <th>Vendas</th>
-                  <th>Litros</th>
-                  <th>Faturamento</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rankingFrentistas.map((item) => (
-                  <tr key={item.label}>
-                    <td>{item.label}</td>
-                    <td>{item.pedidos}</td>
-                    <td>{formatNumber(item.litros)}</td>
-                    <td>{formatCurrency(item.valor)}</td>
-                  </tr>
-                ))}
-                {rankingFrentistas.length === 0 ? (
-                  <tr>
-                    <td className="dashboard-empty" colSpan={4}>
-                      Nenhum frentista com venda paga no historico.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+          <div className="analytics-ranking">
+            {rankingFrentistas.map((item, index) => (
+              <div className="analytics-ranking-row" key={item.label}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <strong>{item.label}</strong>
+                  <small>{item.pedidos} vendas | {formatLiters(item.litros)}</small>
+                  <i style={{ width: `${Math.max(item.share, 6)}%` }} />
+                </div>
+                <b>{formatCompactCurrency(item.valor)}</b>
+              </div>
+            ))}
+            {rankingFrentistas.length === 0 ? <p className="dashboard-empty">Sem ranking de equipe.</p> : null}
           </div>
+        </article>
+      </div>
+
+      <div className="analytics-insight-strip">
+        <article>
+          <span>Combustivel lider</span>
+          <strong>{bestFuel?.label ?? 'Sem dados'}</strong>
+          <p>{bestFuel ? `${formatNumber(bestFuel.share)}% da receita historica` : 'Aguardando vendas pagas'}</p>
+        </article>
+        <article>
+          <span>Frentista destaque</span>
+          <strong>{bestAttendant?.label ?? 'Sem dados'}</strong>
+          <p>{bestAttendant ? `${formatCompactCurrency(bestAttendant.valor)} em vendas` : 'Aguardando vendas pagas'}</p>
+        </article>
+        <article>
+          <span>Projecao operacional</span>
+          <strong>{formatCurrency(forecastRevenue + valorPendente)}</strong>
+          <p>Previsao somada aos pendentes atuais</p>
         </article>
       </div>
     </section>

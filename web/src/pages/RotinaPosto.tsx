@@ -63,7 +63,7 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
   return [
     {
       items: [
-        { label: 'Dashboard', icon: <DashboardIcon />, active: activeView === 'historico', view: 'historico' },
+        { label: 'Historico do Dia', icon: <HistoryIcon />, active: activeView === 'historico', view: 'historico' },
         { label: 'Rotina Posto', icon: <FuelPumpIcon />, active: activeView === 'rotina', view: 'rotina' },
         { label: 'Pedidos Pendentes', href: '#pendentes', icon: <ReceiptIcon /> },
         { label: 'Historico de Pedidos', href: '#finalizados', icon: <HistoryIcon /> },
@@ -280,7 +280,7 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
               {isHistoricoView ? <HistoryIcon /> : <FuelPumpIcon />}
             </span>
             <div>
-              <h1>{isHistoricoView ? 'Historico Inteligente' : 'Rotina do Posto'}</h1>
+              <h1>{isHistoricoView ? 'Historico do Dia' : 'Rotina do Posto'}</h1>
               <p>
                 {isHistoricoView
                   ? 'Analise resultados passados e projecoes futuras'
