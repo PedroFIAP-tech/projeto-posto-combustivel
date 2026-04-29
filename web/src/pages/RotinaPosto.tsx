@@ -54,7 +54,7 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
       {
         items: [
           { label: 'Rotina Posto', icon: <FuelPumpIcon />, active: activeView === 'rotina', view: 'rotina' },
-          { label: 'Historico do Dia', icon: <HistoryIcon />, active: activeView === 'historico', view: 'historico' },
+          { label: 'Historico de Abastecimentos', icon: <HistoryIcon />, active: activeView === 'historico', view: 'historico' },
         ],
       },
     ];
@@ -63,10 +63,9 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
   return [
     {
       items: [
-        { label: 'Historico do Dia', icon: <HistoryIcon />, active: activeView === 'historico', view: 'historico' },
         { label: 'Rotina Posto', icon: <FuelPumpIcon />, active: activeView === 'rotina', view: 'rotina' },
         { label: 'Pedidos Pendentes', href: '#pendentes', icon: <ReceiptIcon /> },
-        { label: 'Historico de Pedidos', href: '#finalizados', icon: <HistoryIcon /> },
+        { label: 'Historico de Abastecimentos', icon: <HistoryIcon />, active: activeView === 'historico', view: 'historico' },
       ],
     },
     {
@@ -155,17 +154,25 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
       setMessage('');
     }
 
-    try {
-      const [pendentesData, historicoData] = await Promise.all([getPendentes(), getHistorico()]);
-      const pagos = historicoData.filter((pedido) => pedido.status === 'PAGO').map(withPumpNumber);
+    const [pendentesResult, historicoResult] = await Promise.allSettled([getPendentes(), getHistorico()]);
+
+    if (pendentesResult.status === 'fulfilled') {
+      const pendentesData = pendentesResult.value;
       setPendentes(pendentesData.map(withPumpNumber));
+    } else if (!options.silent) {
+      setMessage('Nao foi possivel carregar os pedidos pendentes.');
+    }
+
+    if (historicoResult.status === 'fulfilled') {
+      const historicoData = historicoResult.value;
+      const pagos = historicoData.filter((pedido) => pedido.status === 'PAGO').map(withPumpNumber);
       setHistoricoFinalizados(pagos);
       setFinalizados(pagos.filter((pedido) => isToday(pedido.created_at)));
-    } catch (_error) {
+    } else if (!options.silent && pendentesResult.status !== 'fulfilled') {
       setMessage('Nao foi possivel carregar a rotina do posto.');
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -280,7 +287,7 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
               {isHistoricoView ? <HistoryIcon /> : <FuelPumpIcon />}
             </span>
             <div>
-              <h1>{isHistoricoView ? 'Historico do Dia' : 'Rotina do Posto'}</h1>
+              <h1>{isHistoricoView ? 'Historico de Abastecimentos' : 'Rotina do Posto'}</h1>
               <p>
                 {isHistoricoView
                   ? 'Analise resultados passados e projecoes futuras'
