@@ -21,7 +21,7 @@ export function BombasEmAndamento({ pedidos }: BombasEmAndamentoProps) {
   return (
     <section className="routine-card">
       <div className="section-title-row">
-        <h2>Bombas em abastecimento</h2>
+        <h2>Bombas com abastecimento registrado</h2>
         <span className="count-pill count-pill-orange">{pedidos.length}</span>
       </div>
 
@@ -53,14 +53,14 @@ export function BombasEmAndamento({ pedidos }: BombasEmAndamentoProps) {
                 <td>{formatCurrency(pedido.total_value)}</td>
                 <td>{formatTime(pedido.created_at)}</td>
                 <td>
-                  <span className="status-badge status-orange">Em abastecimento</span>
+                  <span className="status-badge status-orange">Aguardando pagamento</span>
                 </td>
               </tr>
             ))}
             {pedidos.length === 0 ? (
               <tr>
                 <td className="empty-table" colSpan={6}>
-                  Nenhuma bomba em abastecimento agora.
+                  Nenhuma bomba aguardando finalizacao agora.
                 </td>
               </tr>
             ) : null}

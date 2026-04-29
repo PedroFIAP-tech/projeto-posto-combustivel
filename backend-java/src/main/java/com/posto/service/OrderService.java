@@ -91,7 +91,7 @@ public class OrderService {
     AuthenticatedUser user = securitySupport.currentUser();
     OrderStatus orderStatus = parseStatus(status);
 
-    if (user.role() == Role.ADMIN) {
+    if (user.role() == Role.ADMIN || user.role() == Role.FRENTISTA) {
       if (orderStatus != null) {
         return orderRepository.findByStatusOrderByCreatedAtDesc(orderStatus).stream()
             .map(OrderResponse::from)

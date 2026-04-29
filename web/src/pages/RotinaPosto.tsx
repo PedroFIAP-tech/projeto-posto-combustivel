@@ -136,7 +136,7 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
   const [pendentes, setPendentes] = useState<PumpOrder[]>([]);
   const [finalizados, setFinalizados] = useState<PumpOrder[]>([]);
   const [historicoFinalizados, setHistoricoFinalizados] = useState<PumpOrder[]>([]);
-  const [emAndamento] = useState<PumpOrder[]>([]);
+  const emAndamento = pendentes;
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [payingId, setPayingId] = useState<number | null>(null);
