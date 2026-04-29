@@ -2,9 +2,21 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import logoWhite from '../assets/logos/logo-branca.png';
 import logoMain from '../assets/logos/logo-principal.png';
 import { AguardandoPagamento } from '../components/AguardandoPagamento';
+import {
+  ChartIcon,
+  ClipboardIcon,
+  DashboardIcon,
+  HelpIcon,
+  HistoryIcon,
+  LogOutIcon,
+  SettingsIcon,
+  UsersIcon,
+  WalletIcon,
+} from '../components/AppIcons';
 import { BombasEmAndamento } from '../components/BombasEmAndamento';
 import { FuelPumpIcon } from '../components/FuelPumpIcon';
 import { Finalizados } from '../components/Finalizados';
+import { HistoricoDiaDashboard } from '../components/HistoricoDiaDashboard';
 import { getHistorico, getPendentes, pagarPedido } from '../services/orders';
 import { Order, PumpOrder, User } from '../types';
 
@@ -22,6 +34,7 @@ type MenuItem = {
   href?: string;
   icon?: ReactNode;
   active?: boolean;
+  view?: 'rotina' | 'historico';
 };
 
 type MenuSection = {
@@ -32,13 +45,13 @@ type MenuSection = {
 const TOTAL_BOMBAS = 8;
 const ADMIN_ROLE = 'admin';
 
-const getMenuSections = (role: string): MenuSection[] => {
+const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): MenuSection[] => {
   if (role !== ADMIN_ROLE) {
     return [
       {
         items: [
-          { label: 'Rotina Posto', href: '#rotina', icon: <FuelPumpIcon />, active: true },
-          { label: 'Historico do Dia', href: '#finalizados', icon: 'H' },
+          { label: 'Rotina Posto', icon: <FuelPumpIcon />, active: activeView === 'rotina', view: 'rotina' },
+          { label: 'Historico do Dia', icon: <HistoryIcon />, active: activeView === 'historico', view: 'historico' },
         ],
       },
     ];
@@ -47,43 +60,43 @@ const getMenuSections = (role: string): MenuSection[] => {
   return [
     {
       items: [
-        { label: 'Dashboard', icon: 'D' },
-        { label: 'Rotina Posto', href: '#rotina', icon: <FuelPumpIcon />, active: true },
-        { label: 'Pedidos Pendentes', icon: 'P' },
-        { label: 'Historico de Pedidos', icon: 'H' },
+        { label: 'Dashboard', icon: <DashboardIcon />, active: activeView === 'historico', view: 'historico' },
+        { label: 'Rotina Posto', icon: <FuelPumpIcon />, active: activeView === 'rotina', view: 'rotina' },
+        { label: 'Pedidos Pendentes', href: '#pendentes', icon: <ClipboardIcon /> },
+        { label: 'Historico de Pedidos', href: '#finalizados', icon: <HistoryIcon /> },
       ],
     },
     {
       title: 'Financeiro',
       items: [
-        { label: 'Pagamentos', icon: '$' },
-        { label: 'Faturamento', icon: 'F' },
-        { label: 'Recebimentos', icon: 'R' },
+        { label: 'Pagamentos', icon: <WalletIcon /> },
+        { label: 'Faturamento', icon: <ChartIcon /> },
+        { label: 'Recebimentos', icon: <WalletIcon /> },
       ],
     },
     {
       title: 'Cadastros',
       items: [
-        { label: 'Clientes', icon: 'C' },
+        { label: 'Clientes', icon: <UsersIcon /> },
         { label: 'Combustiveis', icon: 'B' },
-        { label: 'Frentistas', icon: 'F' },
+        { label: 'Frentistas', icon: <UsersIcon /> },
         { label: 'Bombas', icon: <FuelPumpIcon /> },
       ],
     },
     {
       title: 'Relatorios',
       items: [
-        { label: 'Vendas', icon: 'V' },
-        { label: 'Estoque', icon: 'E' },
-        { label: 'Desempenho', icon: 'D' },
+        { label: 'Vendas', icon: <ChartIcon /> },
+        { label: 'Estoque', icon: <ClipboardIcon /> },
+        { label: 'Desempenho', icon: <DashboardIcon /> },
       ],
     },
     {
       title: 'Configuracoes',
       items: [
-        { label: 'Usuarios', icon: 'U' },
-        { label: 'Permissoes', icon: 'P' },
-        { label: 'Logs', icon: 'L' },
+        { label: 'Usuarios', icon: <UsersIcon /> },
+        { label: 'Permissoes', icon: <SettingsIcon /> },
+        { label: 'Logs', icon: <ClipboardIcon /> },
       ],
     },
   ];
@@ -119,6 +132,7 @@ const formatHeaderTime = (date: Date) =>
   }).format(date);
 
 export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
+  const [activeView, setActiveView] = useState<'rotina' | 'historico'>('rotina');
   const [pendentes, setPendentes] = useState<PumpOrder[]>([]);
   const [finalizados, setFinalizados] = useState<PumpOrder[]>([]);
   const [emAndamento] = useState<PumpOrder[]>([]);
@@ -178,7 +192,8 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
   };
 
   const firstName = useMemo(() => user.name.split(' ')[0] || 'Frentista', [user.name]);
-  const menuSections = useMemo(() => getMenuSections(user.role), [user.role]);
+  const menuSections = useMemo(() => getMenuSections(user.role, activeView), [user.role, activeView]);
+  const isHistoricoView = activeView === 'historico';
 
   return (
     <div className="routine-layout">
@@ -206,7 +221,16 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
                     {item.label}
                   </a>
                 ) : (
-                  <button className="sidebar-link" key={item.label} type="button">
+                  <button
+                    className={`sidebar-link${item.active ? ' sidebar-link-active' : ''}`}
+                    key={item.label}
+                    onClick={() => {
+                      if (item.view) {
+                        setActiveView(item.view);
+                      }
+                    }}
+                    type="button"
+                  >
                     <span className="nav-icon">{item.icon}</span>
                     {item.label}
                   </button>
@@ -215,13 +239,17 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
             </div>
           ))}
           <button className="sidebar-link sidebar-button" onClick={onLogout} type="button">
-            <span className="nav-icon">S</span>
+            <span className="nav-icon">
+              <LogOutIcon />
+            </span>
             Sair do Sistema
           </button>
         </nav>
 
         <div className="support-card">
-          <span className="support-icon">?</span>
+          <span className="support-icon">
+            <HelpIcon />
+          </span>
           <div>
             <strong>Precisa de ajuda?</strong>
             <span>Fale com o suporte</span>
@@ -233,11 +261,15 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
         <header className="routine-topbar">
           <div className="page-title">
             <span className="title-icon">
-              <FuelPumpIcon />
+              {isHistoricoView ? <HistoryIcon /> : <FuelPumpIcon />}
             </span>
             <div>
-              <h1>Rotina do Posto</h1>
-              <p>Acompanhe os abastecimentos em tempo real</p>
+              <h1>{isHistoricoView ? 'Historico do Dia' : 'Rotina do Posto'}</h1>
+              <p>
+                {isHistoricoView
+                  ? 'Analise os resultados do dia com metricas gerenciais'
+                  : 'Acompanhe os abastecimentos em tempo real'}
+              </p>
             </div>
           </div>
 
@@ -256,36 +288,38 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
           </div>
         </header>
 
-        <section className="summary-card">
-          <div className="welcome-block">
-            <span className="welcome-icon">
-              <FuelPumpIcon />
-            </span>
-            <div>
-              <h2>Ola, {firstName}!</h2>
-              <p>Aqui voce acompanha os abastecimentos das bombas.</p>
+        {!isHistoricoView ? (
+          <section className="summary-card">
+            <div className="welcome-block">
+              <span className="welcome-icon">
+                <FuelPumpIcon />
+              </span>
+              <div>
+                <h2>Ola, {firstName}!</h2>
+                <p>Aqui voce acompanha os abastecimentos das bombas.</p>
+              </div>
             </div>
-          </div>
 
-          <div className="summary-metrics">
-            <div className="metric-item">
-              <span>Total de bombas</span>
-              <strong>{TOTAL_BOMBAS}</strong>
+            <div className="summary-metrics">
+              <div className="metric-item">
+                <span>Total de bombas</span>
+                <strong>{TOTAL_BOMBAS}</strong>
+              </div>
+              <div className="metric-item">
+                <span>Em abastecimento</span>
+                <strong className="metric-orange">{emAndamento.length}</strong>
+              </div>
+              <div className="metric-item">
+                <span>Aguardando pagamento</span>
+                <strong className="metric-yellow">{pendentes.length}</strong>
+              </div>
+              <div className="metric-item">
+                <span>Finalizados</span>
+                <strong className="metric-green">{finalizados.length}</strong>
+              </div>
             </div>
-            <div className="metric-item">
-              <span>Em abastecimento</span>
-              <strong className="metric-orange">{emAndamento.length}</strong>
-            </div>
-            <div className="metric-item">
-              <span>Aguardando pagamento</span>
-              <strong className="metric-yellow">{pendentes.length}</strong>
-            </div>
-            <div className="metric-item">
-              <span>Finalizados</span>
-              <strong className="metric-green">{finalizados.length}</strong>
-            </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         {message ? <div className="routine-message">{message}</div> : null}
 
@@ -293,10 +327,14 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
           <section className="routine-card">
             <p className="empty-table">Carregando rotina do posto...</p>
           </section>
+        ) : isHistoricoView ? (
+          <HistoricoDiaDashboard finalizados={finalizados} pendentes={pendentes} />
         ) : (
           <>
             <BombasEmAndamento pedidos={emAndamento} />
-            <AguardandoPagamento pedidos={pendentes} onPagar={handlePagar} payingId={payingId} />
+            <div id="pendentes">
+              <AguardandoPagamento pedidos={pendentes} onPagar={handlePagar} payingId={payingId} />
+            </div>
             <div id="finalizados">
               <Finalizados pedidos={finalizados} />
             </div>
