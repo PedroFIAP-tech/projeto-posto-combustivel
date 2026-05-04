@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import logoMain from './assets/logos/logo-principal.png';
 import { RotinaPosto } from './pages/RotinaPosto';
 import api from './services/api';
@@ -50,51 +51,59 @@ function App() {
   };
 
   if (user) {
-    return <RotinaPosto onLogout={handleLogout} user={user} />;
+    return (
+      <>
+        <RotinaPosto onLogout={handleLogout} user={user} />
+        <Analytics />
+      </>
+    );
   }
 
   return (
-    <main className="login-screen">
-      <section className="login-panel">
-        <div className="login-brand">
-          <img alt="Posto BR Control Center" src={logoMain} />
-        </div>
+    <>
+      <main className="login-screen">
+        <section className="login-panel">
+          <div className="login-brand">
+            <img alt="Posto BR Control Center" src={logoMain} />
+          </div>
 
-        <h1>Acesso do Frentista</h1>
-        <p>
-          Teste como <strong>frentista@posto.com</strong> ou <strong>admin@posto.com</strong> usando
-          a senha <strong>123456</strong>.
-        </p>
+          <h1>Acesso do Frentista</h1>
+          <p>
+            Teste como <strong>frentista@posto.com</strong> ou <strong>admin@posto.com</strong> usando
+            a senha <strong>123456</strong>.
+          </p>
 
-        {message ? <div className="login-message">{message}</div> : null}
+          {message ? <div className="login-message">{message}</div> : null}
 
-        <form className="login-form" onSubmit={handleLogin}>
-          <label>
-            E-mail
-            <input
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="frentista@posto.com"
-              type="email"
-              value={email}
-            />
-          </label>
+          <form className="login-form" onSubmit={handleLogin}>
+            <label>
+              E-mail
+              <input
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="frentista@posto.com"
+                type="email"
+                value={email}
+              />
+            </label>
 
-          <label>
-            Senha
-            <input
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="123456"
-              type="password"
-              value={password}
-            />
-          </label>
+            <label>
+              Senha
+              <input
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="123456"
+                type="password"
+                value={password}
+              />
+            </label>
 
-          <button disabled={loading} type="submit">
-            {loading ? 'Entrando...' : 'Entrar no sistema'}
-          </button>
-        </form>
-      </section>
-    </main>
+            <button disabled={loading} type="submit">
+              {loading ? 'Entrando...' : 'Entrar no sistema'}
+            </button>
+          </form>
+        </section>
+      </main>
+      <Analytics />
+    </>
   );
 }
 
