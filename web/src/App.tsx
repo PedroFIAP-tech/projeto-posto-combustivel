@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import logoMain from './assets/logos/logo-principal.png';
+import { PostoLoadingScreen } from './components/PostoLoadingScreen';
 import { RotinaPosto } from './pages/RotinaPosto';
 import api from './services/api';
 import { LoginResponse, User } from './types';
@@ -110,6 +111,12 @@ function App() {
           </button>
         </form>
       </section>
+      {loading ? (
+        <PostoLoadingScreen
+          message="Validando credenciais e preparando seu painel."
+          title="Entrando no posto"
+        />
+      ) : null}
     </main>
   );
 }

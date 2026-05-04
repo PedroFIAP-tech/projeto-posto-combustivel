@@ -52,6 +52,227 @@ button:disabled {
   opacity: 0.7;
 }
 
+.posto-loader {
+  align-items: center;
+  color: var(--white);
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.posto-loader-screen {
+  background:
+    radial-gradient(circle at 30% 18%, rgba(255, 204, 0, 0.16), transparent 30%),
+    linear-gradient(135deg, #004624 0%, var(--green-900) 54%, #12332d 100%);
+  inset: 0;
+  padding: 24px;
+  position: fixed;
+  z-index: 9999;
+}
+
+.posto-loader-panel {
+  background:
+    linear-gradient(135deg, rgba(0, 102, 51, 0.96), rgba(18, 51, 45, 0.96)),
+    var(--green-900);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.16);
+  min-height: 360px;
+  padding: 24px;
+}
+
+.posto-loader-shell {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+  max-width: 620px;
+  position: relative;
+  width: min(100%, 620px);
+}
+
+.posto-loader-screen .posto-loader-shell {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.24);
+  padding: 30px;
+}
+
+.posto-loader-scene {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04)),
+    rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.posto-loader-svg {
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.loader-ground {
+  stroke: rgba(255, 255, 255, 0.24);
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.loader-pump-body,
+.loader-car-body {
+  fill: #ffffff;
+}
+
+.loader-pump-face,
+.loader-car-window {
+  fill: #dff5e8;
+}
+
+.loader-pump-meter,
+.loader-car-line {
+  fill: none;
+  stroke: #006633;
+  stroke-linecap: round;
+  stroke-width: 5;
+}
+
+.loader-pump-base,
+.loader-wheel {
+  fill: #111827;
+}
+
+.loader-wheel-core {
+  fill: #ffcc00;
+}
+
+.loader-nozzle,
+.loader-nozzle-tip {
+  fill: none;
+  stroke: #111827;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 10;
+}
+
+.loader-car {
+  animation: loader-car-idle 1.8s ease-in-out infinite;
+  transform-origin: 380px 170px;
+}
+
+.loader-hose-shadow {
+  fill: none;
+  stroke: rgba(17, 24, 39, 0.28);
+  stroke-linecap: round;
+  stroke-width: 17;
+}
+
+.loader-hose {
+  fill: none;
+  stroke: #111827;
+  stroke-linecap: round;
+  stroke-width: 11;
+}
+
+.loader-fuel-flow {
+  animation: loader-fuel-flow 1.05s linear infinite;
+  fill: none;
+  stroke: #ffcc00;
+  stroke-dasharray: 18 18;
+  stroke-linecap: round;
+  stroke-width: 5;
+}
+
+.loader-drop {
+  animation: loader-drop-pulse 1.2s ease-in-out infinite;
+  fill: #ffcc00;
+  opacity: 0;
+}
+
+.loader-drop-b {
+  animation-delay: 0.22s;
+}
+
+.loader-drop-c {
+  animation-delay: 0.44s;
+}
+
+.posto-loader-copy {
+  text-align: center;
+}
+
+.posto-loader-copy strong {
+  display: block;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.posto-loader-copy span {
+  color: rgba(255, 255, 255, 0.78);
+  display: block;
+  line-height: 1.5;
+  margin-top: 7px;
+}
+
+.posto-loader-progress {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  height: 8px;
+  max-width: 360px;
+  overflow: hidden;
+  width: 72%;
+}
+
+.posto-loader-progress i {
+  animation: loader-progress 1.25s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--yellow-500), #fff4a6, var(--yellow-500));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  width: 42%;
+}
+
+@keyframes loader-fuel-flow {
+  to {
+    stroke-dashoffset: -72;
+  }
+}
+
+@keyframes loader-drop-pulse {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.84);
+  }
+  35%,
+  65% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes loader-car-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes loader-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
 .login-screen {
   align-items: center;
   background: var(--green-900);

@@ -9,7 +9,6 @@ import {
   DashboardIcon,
   FileIcon,
   HelpIcon,
-  HistoryIcon,
   ReceiptIcon,
   ShieldIcon,
   StockIcon,
@@ -20,6 +19,7 @@ import { BombasEmAndamento } from '../components/BombasEmAndamento';
 import { FuelPumpIcon } from '../components/FuelPumpIcon';
 import { Finalizados } from '../components/Finalizados';
 import { HistoricoDiaDashboard } from '../components/HistoricoDiaDashboard';
+import { PostoLoadingScreen } from '../components/PostoLoadingScreen';
 import { getHistorico, getPendentes, pagarPedido } from '../services/orders';
 import { Order, PumpOrder, User } from '../types';
 
@@ -365,6 +365,12 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
 
   return (
     <div className="routine-layout">
+      {switchingRole ? (
+        <PostoLoadingScreen
+          message="Validando senha e carregando permissoes do usuario."
+          title="Trocando operador"
+        />
+      ) : null}
       <aside className="routine-sidebar">
         <div className="brand-block">
           <img alt="Posto BR" className="brand-icon" src={logoWhite} />
@@ -423,7 +429,7 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
         <header className="routine-topbar">
           <div className="page-title">
             <span className="title-icon">
-              {isHistoricoView ? <HistoryIcon /> : <FuelPumpIcon />}
+              {isHistoricoView ? <ClipboardIcon /> : <FuelPumpIcon />}
             </span>
             <div>
               <h1>{isHistoricoView ? 'Historico de Abastecimentos' : 'Rotina do Posto'}</h1>
@@ -574,9 +580,11 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
         {message ? <div className="routine-message">{message}</div> : null}
 
         {loading ? (
-          <section className="routine-card">
-            <p className="empty-table">Carregando rotina do posto...</p>
-          </section>
+          <PostoLoadingScreen
+            message="Buscando bombas, pagamentos e historico em tempo real."
+            title="Preparando rotina"
+            variant="panel"
+          />
         ) : isHistoricoView ? (
           <HistoricoDiaDashboard finalizados={historicoFinalizados} pendentes={pendentes} />
         ) : (
