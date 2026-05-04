@@ -322,6 +322,7 @@ function ChartFrame({ children, emptyText, emptyTitle, isEmpty, large }: ChartFr
 export function HistoricoDiaDashboard({ finalizados, pendentes }: HistoricoDiaDashboardProps) {
   const [period, setPeriod] = useState<PeriodOption>('30');
   const [metric, setMetric] = useState<MetricOption>('valor');
+  const [activeFuelLabel, setActiveFuelLabel] = useState('');
 
   const sortedOrders = useMemo(
     () =>
@@ -383,6 +384,8 @@ export function HistoricoDiaDashboard({ finalizados, pendentes }: HistoricoDiaDa
   const rankingCombustiveis = groupRanking(periodOrders, getFuelName).slice(0, 6);
   const rankingFrentistas = groupRanking(periodOrders, getUserName).slice(0, 6);
   const bestFuel = rankingCombustiveis[0];
+  const maxFuelRevenue = Math.max(...rankingCombustiveis.map((item) => item.valor), 0);
+  const selectedFuel = rankingCombustiveis.find((item) => item.label === activeFuelLabel) ?? bestFuel;
   const bestAttendant = rankingFrentistas[0];
   const activeDays = visibleSeries.filter((point) => point.pedidos > 0 || point.valor > 0 || point.litros > 0);
   const bestDay = [...visibleSeries].filter((point) => point.valor > 0).sort((a, b) => b.valor - a.valor)[0];
@@ -643,25 +646,45 @@ export function HistoricoDiaDashboard({ finalizados, pendentes }: HistoricoDiaDa
             emptyTitle="Ranking indisponivel"
             isEmpty={rankingCombustiveis.length === 0}
           >
-            <ResponsiveContainer height="100%" width="100%">
-              <BarChart data={rankingCombustiveis} layout="vertical" margin={{ bottom: 0, left: 8, right: 18, top: 4 }}>
-                <CartesianGrid horizontal={false} stroke="#e2e8f0" />
-                <XAxis
-                  axisLine={false}
-                  tick={{ fill: '#64748b', fontSize: 12 }}
-                  tickFormatter={(value) => formatCompactCurrency(asNumber(value))}
-                  tickLine={false}
-                  type="number"
-                />
-                <YAxis axisLine={false} dataKey="label" tick={{ fill: '#334155', fontSize: 12 }} tickLine={false} type="category" width={104} />
-                <Tooltip formatter={tooltipFormatter} wrapperClassName="history-tooltip" />
-                <Bar dataKey="valor" isAnimationActive={false} name="Faturamento" radius={[0, 8, 8, 0]}>
-                  {rankingCombustiveis.map((item, index) => (
-                    <Cell fill={COLORS[index % COLORS.length]} key={item.label} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="history-product-chart">
+              <div className="history-product-inspector">
+                <span>Produto selecionado</span>
+                <strong>{selectedFuel?.label ?? 'Sem dados'}</strong>
+                <small>
+                  {selectedFuel
+                    ? `${formatCurrency(selectedFuel.valor)} | ${formatNumber(selectedFuel.share, 1)}% da receita | ${formatLiters(selectedFuel.litros)}`
+                    : 'Passe o mouse em uma barra para ver detalhes.'}
+                </small>
+              </div>
+
+              <div className="history-product-bars">
+                {rankingCombustiveis.map((item, index) => {
+                  const width = maxFuelRevenue ? (item.valor / maxFuelRevenue) * 100 : 0;
+                  const isSelected = selectedFuel?.label === item.label;
+
+                  return (
+                    <button
+                      className={`history-product-row${isSelected ? ' history-product-row-active' : ''}`}
+                      key={item.label}
+                      onFocus={() => setActiveFuelLabel(item.label)}
+                      onMouseEnter={() => setActiveFuelLabel(item.label)}
+                      type="button"
+                    >
+                      <span className="history-product-name">{item.label}</span>
+                      <span className="history-product-track">
+                        <i
+                          style={{
+                            background: COLORS[index % COLORS.length],
+                            width: `${Math.max(width, item.valor > 0 ? 5 : 0)}%`,
+                          }}
+                        />
+                      </span>
+                      <strong>{formatCompactCurrency(item.valor)}</strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </ChartFrame>
         </article>
 
