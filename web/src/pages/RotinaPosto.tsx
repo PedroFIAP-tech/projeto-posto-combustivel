@@ -370,6 +370,11 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
           message="Validando senha e carregando permissoes do usuario."
           title="Trocando operador"
         />
+      ) : loading ? (
+        <PostoLoadingScreen
+          message="Buscando bombas, pagamentos e historico em tempo real."
+          title="Preparando rotina"
+        />
       ) : null}
       <aside className="routine-sidebar">
         <div className="brand-block">
@@ -579,13 +584,7 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
 
         {message ? <div className="routine-message">{message}</div> : null}
 
-        {loading ? (
-          <PostoLoadingScreen
-            message="Buscando bombas, pagamentos e historico em tempo real."
-            title="Preparando rotina"
-            variant="panel"
-          />
-        ) : isHistoricoView ? (
+        {loading ? null : isHistoricoView ? (
           <HistoricoDiaDashboard finalizados={historicoFinalizados} pendentes={pendentes} />
         ) : (
           <>
