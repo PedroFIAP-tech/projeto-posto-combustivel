@@ -7,6 +7,11 @@ import { LoginResponse, User } from './types';
 const TOKEN_KEY = '@PostoApp:token';
 const USER_KEY = '@PostoApp:user';
 
+type LoginCredentials = {
+  email: string;
+  password: string;
+};
+
 function App() {
   const [email, setEmail] = useState('frentista@posto.com');
   const [password, setPassword] = useState('123456');
@@ -23,21 +28,32 @@ function App() {
     }
   }, []);
 
+  const authenticate = async ({ email: nextEmail, password: nextPassword }: LoginCredentials) => {
+    const response = await api.post<LoginResponse>('/login', { email: nextEmail, password: nextPassword });
+    localStorage.setItem(TOKEN_KEY, response.data.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
+    setEmail(nextEmail);
+    setPassword(nextPassword);
+    setUser(response.data.user);
+  };
+
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setMessage('');
 
     try {
-      const response = await api.post<LoginResponse>('/login', { email, password });
-      localStorage.setItem(TOKEN_KEY, response.data.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
-      setUser(response.data.user);
+      await authenticate({ email, password });
     } catch (_error) {
       setMessage('Falha no login. Verifique as credenciais.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSwitchUser = async (credentials: LoginCredentials) => {
+    setMessage('');
+    await authenticate(credentials);
   };
 
   const handleLogout = () => {
@@ -50,7 +66,7 @@ function App() {
   };
 
   if (user) {
-    return <RotinaPosto onLogout={handleLogout} user={user} />;
+    return <RotinaPosto onLogout={handleLogout} onSwitchUser={handleSwitchUser} user={user} />;
   }
 
   return (

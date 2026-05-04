@@ -1,15 +1,15 @@
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import logoWhite from '../assets/logos/logo-branca.png';
 import logoMain from '../assets/logos/logo-principal.png';
 import { AguardandoPagamento } from '../components/AguardandoPagamento';
 import {
   ChartIcon,
   CashIcon,
+  ClipboardIcon,
   DashboardIcon,
   FileIcon,
   HelpIcon,
   HistoryIcon,
-  LogOutIcon,
   ReceiptIcon,
   ShieldIcon,
   StockIcon,
@@ -26,10 +26,16 @@ import { Order, PumpOrder, User } from '../types';
 type RotinaPostoProps = {
   user: User;
   onLogout: () => void;
+  onSwitchUser: (credentials: SwitchUserCredentials) => Promise<void>;
 };
 
 type LoadOptions = {
   silent?: boolean;
+};
+
+type SwitchUserCredentials = {
+  email: string;
+  password: string;
 };
 
 type MenuItem = {
@@ -47,6 +53,19 @@ type MenuSection = {
 
 const TOTAL_BOMBAS = 8;
 const ADMIN_ROLE = 'admin';
+const AVATAR_KEY_PREFIX = '@PostoApp:avatar:';
+const DEMO_USERS = [
+  {
+    email: 'frentista@posto.com',
+    label: 'Frentista',
+    role: 'frentista',
+  },
+  {
+    email: 'admin@posto.com',
+    label: 'Administrador',
+    role: ADMIN_ROLE,
+  },
+] as const;
 
 const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): MenuSection[] => {
   if (role !== ADMIN_ROLE) {
@@ -54,7 +73,7 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
       {
         items: [
           { label: 'Rotina Posto', icon: <FuelPumpIcon />, active: activeView === 'rotina', view: 'rotina' },
-          { label: 'Historico de Abastecimentos', icon: <HistoryIcon />, active: activeView === 'historico', view: 'historico' },
+          { label: 'Historico de Abastecimentos', icon: <ClipboardIcon />, active: activeView === 'historico', view: 'historico' },
         ],
       },
     ];
@@ -65,7 +84,7 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
       items: [
         { label: 'Rotina Posto', icon: <FuelPumpIcon />, active: activeView === 'rotina', view: 'rotina' },
         { label: 'Pedidos Pendentes', href: '#pendentes', icon: <ReceiptIcon /> },
-        { label: 'Historico de Abastecimentos', icon: <HistoryIcon />, active: activeView === 'historico', view: 'historico' },
+        { label: 'Historico de Abastecimentos', icon: <ClipboardIcon />, active: activeView === 'historico', view: 'historico' },
       ],
     },
     {
@@ -138,7 +157,7 @@ const formatHeaderTime = (date: Date) =>
     minute: '2-digit',
   }).format(date);
 
-export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
+export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) {
   const [activeView, setActiveView] = useState<'rotina' | 'historico'>('rotina');
   const [pendentes, setPendentes] = useState<PumpOrder[]>([]);
   const [finalizados, setFinalizados] = useState<PumpOrder[]>([]);
@@ -148,6 +167,13 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
   const [message, setMessage] = useState('');
   const [payingId, setPayingId] = useState<number | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarMessage, setAvatarMessage] = useState('');
+  const [switchEmail, setSwitchEmail] = useState('');
+  const [switchPassword, setSwitchPassword] = useState('');
+  const [switchingRole, setSwitchingRole] = useState<string | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const carregarPedidos = useCallback(async (options: LoadOptions = {}) => {
     if (!options.silent) {
@@ -190,6 +216,40 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
     return () => window.clearInterval(clock);
   }, []);
 
+  useEffect(() => {
+    setAvatarUrl(localStorage.getItem(`${AVATAR_KEY_PREFIX}${user.email}`) ?? '');
+    setAvatarMessage('');
+    setAccountMenuOpen(false);
+    setSwitchEmail('');
+    setSwitchPassword('');
+  }, [user.email]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) {
+      return undefined;
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [accountMenuOpen]);
+
   const handlePagar = async (id: number) => {
     setPayingId(id);
     setMessage('');
@@ -214,9 +274,94 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
     }
   };
 
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    setAvatarMessage('');
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarMessage('Escolha um arquivo de imagem.');
+      return;
+    }
+
+    if (file.size > 1024 * 1024 * 2) {
+      setAvatarMessage('Use uma imagem com ate 2 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setAvatarUrl(result);
+      localStorage.setItem(`${AVATAR_KEY_PREFIX}${user.email}`, result);
+    };
+    reader.onerror = () => setAvatarMessage('Nao foi possivel carregar a imagem.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    localStorage.removeItem(`${AVATAR_KEY_PREFIX}${user.email}`);
+    setAvatarUrl('');
+    setAvatarMessage('');
+  };
+
+  const handleSelectSwitchUser = (email: string) => {
+    setAvatarMessage('');
+
+    if (email === user.email) {
+      setSwitchEmail('');
+      setSwitchPassword('');
+      return;
+    }
+
+    setSwitchEmail(email);
+  };
+
+  const handleSwitchUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const selectedUser = DEMO_USERS.find((option) => option.email === switchEmail);
+
+    if (!selectedUser) {
+      setAvatarMessage('Escolha o usuario para trocar.');
+      return;
+    }
+
+    if (!switchPassword.trim()) {
+      setAvatarMessage('Digite a senha do usuario selecionado.');
+      return;
+    }
+
+    if (selectedUser.email === user.email) {
+      setAvatarMessage('Este usuario ja esta ativo.');
+      return;
+    }
+
+    setSwitchingRole(selectedUser.role);
+    setMessage('');
+    setAvatarMessage('');
+
+    try {
+      await onSwitchUser({ email: selectedUser.email, password: switchPassword });
+      setActiveView('rotina');
+      setSwitchEmail('');
+      setSwitchPassword('');
+    } catch (_error) {
+      setAvatarMessage('Senha invalida ou usuario indisponivel.');
+    } finally {
+      setSwitchingRole(null);
+    }
+  };
+
   const firstName = useMemo(() => user.name.split(' ')[0] || 'Frentista', [user.name]);
   const menuSections = useMemo(() => getMenuSections(user.role, activeView), [user.role, activeView]);
   const isHistoricoView = activeView === 'historico';
+  const roleLabel = user.role === ADMIN_ROLE ? 'Admin' : 'Frentista';
+  const selectedSwitchUser = DEMO_USERS.find((option) => option.email === switchEmail);
+  const canSwitchUser = Boolean(selectedSwitchUser && selectedSwitchUser.email !== user.email && switchPassword.trim());
 
   return (
     <div className="routine-layout">
@@ -261,12 +406,6 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
               )}
             </div>
           ))}
-          <button className="sidebar-link sidebar-button" onClick={onLogout} type="button">
-            <span className="nav-icon">
-              <LogOutIcon />
-            </span>
-            Sair do Sistema
-          </button>
         </nav>
 
         <div className="support-card">
@@ -290,7 +429,7 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
               <h1>{isHistoricoView ? 'Historico de Abastecimentos' : 'Rotina do Posto'}</h1>
               <p>
                 {isHistoricoView
-                  ? 'Analise resultados passados e projecoes futuras'
+                  ? 'Consulte vendas pagas, pendencias e desempenho por periodo'
                   : 'Acompanhe os abastecimentos em tempo real'}
               </p>
             </div>
@@ -301,12 +440,100 @@ export function RotinaPosto({ user, onLogout }: RotinaPostoProps) {
               <strong>{formatHeaderTime(now)}</strong>
               <span>{formatHeaderDate(now)}</span>
             </div>
-            <div className="user-chip">
-              <div className="avatar">{firstName.charAt(0).toUpperCase()}</div>
-              <div>
-                <strong>{user.name}</strong>
-                <span>{user.role === ADMIN_ROLE ? 'Admin' : 'Frentista'}</span>
-              </div>
+            <div className="account-menu" ref={accountMenuRef}>
+              <button
+                aria-expanded={accountMenuOpen}
+                className="user-chip"
+                onClick={() => setAccountMenuOpen((current) => !current)}
+                type="button"
+              >
+                <span className="avatar">
+                  {avatarUrl ? <img alt={`Foto de ${user.name}`} src={avatarUrl} /> : firstName.charAt(0).toUpperCase()}
+                </span>
+                <span>
+                  <strong>{user.name}</strong>
+                  <span>{roleLabel}</span>
+                </span>
+              </button>
+
+              {accountMenuOpen ? (
+                <div className="account-panel">
+                  <div className="account-panel-header">
+                    <span className="avatar avatar-large">
+                      {avatarUrl ? <img alt={`Foto de ${user.name}`} src={avatarUrl} /> : firstName.charAt(0).toUpperCase()}
+                    </span>
+                    <div>
+                      <strong>{user.name}</strong>
+                      <span>{user.email}</span>
+                    </div>
+                  </div>
+
+                  <div className="account-actions-grid">
+                    <label className="account-action-button">
+                      Trocar foto
+                      <input accept="image/*" onChange={handleAvatarChange} type="file" />
+                    </label>
+                    <button className="account-action-button" disabled={!avatarUrl} onClick={handleRemoveAvatar} type="button">
+                      Remover foto
+                    </button>
+                  </div>
+                  {avatarMessage ? <p className="account-alert">{avatarMessage}</p> : null}
+
+                  <form className="account-section" onSubmit={handleSwitchUser}>
+                    <span>Trocar usuario</span>
+                    {DEMO_USERS.map((option) => (
+                      <button
+                        className={`account-user-option${option.email === user.email ? ' account-user-option-active' : ''}${
+                          switchEmail === option.email && option.email !== user.email ? ' account-user-option-selected' : ''
+                        }`}
+                        disabled={switchingRole !== null}
+                        key={option.email}
+                        onClick={() => handleSelectSwitchUser(option.email)}
+                        type="button"
+                      >
+                        <span>{option.label.charAt(0)}</span>
+                        <div>
+                          <strong>{option.label}</strong>
+                          <small>{option.email}</small>
+                        </div>
+                        <b>
+                          {switchingRole === option.role
+                            ? 'Entrando...'
+                            : option.email === user.email
+                              ? 'Atual'
+                              : switchEmail === option.email
+                                ? 'Selecionado'
+                                : 'Escolher'}
+                        </b>
+                      </button>
+                    ))}
+
+                    <label className="account-password-field">
+                      Senha
+                      <input
+                        autoComplete="current-password"
+                        disabled={switchingRole !== null}
+                        onChange={(event) => setSwitchPassword(event.target.value)}
+                        placeholder="Digite a senha"
+                        type="password"
+                        value={switchPassword}
+                      />
+                    </label>
+
+                    <button className="account-switch-button" disabled={switchingRole !== null || !canSwitchUser} type="submit">
+                      {switchingRole
+                        ? 'Trocando usuario...'
+                        : selectedSwitchUser?.email === user.email
+                          ? 'Usuario atual'
+                          : 'Trocar usuario'}
+                    </button>
+                  </form>
+
+                  <button className="account-logout-button" onClick={onLogout} type="button">
+                    Sair do sistema
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </header>
