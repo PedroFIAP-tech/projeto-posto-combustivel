@@ -198,7 +198,7 @@ Essa pasta cuida da autenticacao.
 | `AuthenticatedUser` | Representa o usuario autenticado dentro da aplicacao. |
 | `SecuritySupport` | Ajuda services a descobrir quem esta logado e qual permissao possui. |
 
-Depois do login, o frontend guarda o token. Nas proximas chamadas, ele envia esse token para provar que o usuario esta autenticado.
+Depois do login, o frontend mantem o token apenas durante a sessao atual da tela. Nas proximas chamadas dessa sessao, ele envia esse token para provar que o usuario esta autenticado.
 
 ### `config/`
 
@@ -277,7 +277,7 @@ As migrations seguintes normalizam esses nomes para o padrao PostgreSQL usado pe
 2. Java procura o usuario pelo email.
 3. Java compara a senha digitada com a senha criptografada.
 4. Se estiver correto, Java gera um token JWT.
-5. Frontend guarda o token e usa nas proximas chamadas.
+5. Frontend mantem o token em memoria e usa nas proximas chamadas.
 
 ### Registro de abastecimento
 
@@ -312,7 +312,7 @@ Frentista ve uma visao mais limitada, voltada aos pedidos do dia e ao proprio fl
 | :--- | :--- | :--- | :--- |
 | `GET` | `/health` | Nao | Verifica se a API esta online. |
 | `POST` | `/login` | Nao | Autentica usuario e retorna token JWT. |
-| `GET` | `/me` | Sim | Valida o token salvo e retorna o usuario autenticado. |
+| `GET` | `/me` | Sim | Valida o token enviado e retorna o usuario autenticado. |
 | `GET` | `/combustiveis` | Sim | Lista combustiveis e precos. |
 | `PUT` | `/combustiveis/{id}` | Sim | Atualiza preco de um combustivel. |
 | `POST` | `/bomba/abastecer` | Sim | Registra um abastecimento. |
@@ -327,7 +327,7 @@ O frontend fica na pasta `web/` e e feito com React + TypeScript.
 Ele entrega:
 
 - Tela de login.
-- Armazenamento do token no navegador.
+- Token mantido apenas em memoria durante a sessao atual da tela.
 - Envio automatico do token nas chamadas para a API.
 - Tela de rotina do posto.
 - Cards com resumo de bombas, pendentes e finalizados.

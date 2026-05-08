@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import logoMain from './assets/logos/logo-principal.png';
 import { PostoLoadingScreen } from './components/PostoLoadingScreen';
 import { RotinaPosto } from './pages/RotinaPosto';
-import api from './services/api';
+import api, { clearAuthToken, setAuthToken } from './services/api';
 import { LoginResponse, User } from './types';
 
-const TOKEN_KEY = '@PostoApp:token';
-const USER_KEY = '@PostoApp:user';
+const LEGACY_TOKEN_KEY = '@PostoApp:token';
+const LEGACY_USER_KEY = '@PostoApp:user';
 
 type LoginCredentials = {
   email: string;
@@ -17,53 +17,18 @@ function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [user, setUser] = useState<User | null>(null);
-  const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-
-    localStorage.removeItem(USER_KEY);
-
-    if (!token) {
-      setInitializing(false);
-      return undefined;
-    }
-
-    let active = true;
-
-    const validateStoredToken = async () => {
-      try {
-        const response = await api.get<User>('/me');
-
-        if (active) {
-          setUser(response.data);
-        }
-      } catch (_error) {
-        localStorage.removeItem(TOKEN_KEY);
-
-        if (active) {
-          setMessage('Sessao expirada. Faca login novamente.');
-        }
-      } finally {
-        if (active) {
-          setInitializing(false);
-        }
-      }
-    };
-
-    void validateStoredToken();
-
-    return () => {
-      active = false;
-    };
+    clearAuthToken();
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_USER_KEY);
   }, []);
 
   const authenticate = async ({ email: nextEmail, password: nextPassword }: LoginCredentials) => {
     const response = await api.post<LoginResponse>('/login', { email: nextEmail, password: nextPassword });
-    localStorage.setItem(TOKEN_KEY, response.data.token);
-    localStorage.removeItem(USER_KEY);
+    setAuthToken(response.data.token);
     setEmail(nextEmail);
     setPassword('');
     setUser(response.data.user);
@@ -89,24 +54,14 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    clearAuthToken();
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_USER_KEY);
     setUser(null);
     setEmail('');
     setPassword('');
     setMessage('Sessao encerrada.');
   };
-
-  if (initializing) {
-    return (
-      <main className="login-screen">
-        <PostoLoadingScreen
-          message="Validando sessao existente com o servidor."
-          title="Verificando acesso"
-        />
-      </main>
-    );
-  }
 
   if (user) {
     return <RotinaPosto onLogout={handleLogout} onSwitchUser={handleSwitchUser} user={user} />;
