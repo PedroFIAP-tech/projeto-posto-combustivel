@@ -312,6 +312,7 @@ Frentista ve uma visao mais limitada, voltada aos pedidos do dia e ao proprio fl
 | :--- | :--- | :--- | :--- |
 | `GET` | `/health` | Nao | Verifica se a API esta online. |
 | `POST` | `/login` | Nao | Autentica usuario e retorna token JWT. |
+| `GET` | `/me` | Sim | Valida o token salvo e retorna o usuario autenticado. |
 | `GET` | `/combustiveis` | Sim | Lista combustiveis e precos. |
 | `PUT` | `/combustiveis/{id}` | Sim | Atualiza preco de um combustivel. |
 | `POST` | `/bomba/abastecer` | Sim | Registra um abastecimento. |
@@ -368,6 +369,8 @@ O Java acessa o banco usando:
 jdbc:postgresql://localhost:5432/posto_combustivel
 ```
 
+Use `.env.example` como referencia para as variaveis locais. O Spring tambem tem defaults em `application.properties`, entao o backend local funciona com o banco do `docker-compose.yml` mesmo sem variaveis manuais.
+
 ## Como rodar o projeto
 
 ### 1. Subir o banco
@@ -414,7 +417,37 @@ Como a API usa `8080` por padrao, o React normalmente abre em:
 http://localhost:3000
 ```
 
+No ambiente local, o frontend aponta para `http://localhost:8080`. Para deixar isso explicito, crie um arquivo `web/.env.development.local` com:
+
+```txt
+REACT_APP_API_URL=http://localhost:8080
+```
+
 Se o frontend estiver rodando em outra porta, ajuste `CORS_ALLOWED_ORIGINS` no backend.
+
+## Ambientes local e producao
+
+O projeto separa os ambientes assim:
+
+| Ambiente | Frontend usa | Backend usa |
+| :--- | :--- | :--- |
+| Local | `http://localhost:3000` | `http://localhost:8080` |
+| Vercel | URL publica do Vercel | API publica do Render |
+| Render | Nao hospeda o React | Docker do `backend-java` |
+
+No codigo do frontend, `web/src/services/api.ts` usa `http://localhost:8080` apenas quando `NODE_ENV=development`. Em build de producao, o fallback continua sendo:
+
+```txt
+https://projeto-posto-combustivel.onrender.com
+```
+
+Mesmo assim, no Vercel e recomendado configurar a variavel:
+
+```txt
+REACT_APP_API_URL=https://projeto-posto-combustivel.onrender.com
+```
+
+Assim o deploy nao depende de valor escondido no codigo.
 
 ## Deploy no Render com Docker
 
@@ -427,6 +460,8 @@ Root Directory: backend-java
 
 Nao precisa preencher Build Command nem Start Command. O `backend-java/Dockerfile` ja compila o projeto com Maven e inicia o `.jar`.
 
+Tambem existe um `render.yaml` na raiz para usar como Blueprint no Render.
+
 Configure as variaveis de ambiente do Render:
 
 ```txt
@@ -435,9 +470,28 @@ DATABASE_USERNAME=USUARIO_DO_BANCO
 DATABASE_PASSWORD=SENHA_DO_BANCO
 JWT_SECRET=um-segredo-grande-e-seguro
 CORS_ALLOWED_ORIGINS=https://url-do-seu-frontend
+CORS_ALLOWED_ORIGIN_PATTERNS=https://*.vercel.app
 ```
 
 O Render fornece a variavel `PORT` automaticamente. A aplicacao tambem tem default `8080`, que combina com o Dockerfile.
+
+## Deploy no Vercel
+
+Se o projeto Vercel estiver apontando para a raiz do repositorio, o arquivo `vercel.json` ja define:
+
+```txt
+Install Command: npm --prefix web ci
+Build Command: npm --prefix web run build
+Output Directory: web/build
+```
+
+Se o projeto Vercel estiver com Root Directory em `web`, o `web/vercel.json` garante o rewrite para SPA.
+
+No Vercel, configure:
+
+```txt
+REACT_APP_API_URL=https://projeto-posto-combustivel.onrender.com
+```
 
 ## Variaveis de ambiente
 
@@ -452,12 +506,13 @@ O backend aceita estas variaveis:
 | `JWT_SECRET` | Segredo usado para assinar tokens. | Valor dev no `application.properties` |
 | `JWT_EXPIRATION_MS` | Tempo de validade do token. | `86400000` |
 | `CORS_ALLOWED_ORIGINS` | URLs do frontend permitidas. | `http://localhost:3001,http://localhost:3000,http://localhost:5173` |
+| `CORS_ALLOWED_ORIGIN_PATTERNS` | Padroes de origem aceitos para deploys/previews. | `https://*.vercel.app` |
 
 O frontend pode usar:
 
 | Variavel | Para que serve | Padrao |
 | :--- | :--- | :--- |
-| `REACT_APP_API_URL` | URL da API Java. | `https://projeto-posto-combustivel.onrender.com` |
+| `REACT_APP_API_URL` | URL da API Java. | Local: `http://localhost:8080`; Producao: `https://projeto-posto-combustivel.onrender.com` |
 
 ## Como testar
 

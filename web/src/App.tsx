@@ -14,27 +14,58 @@ type LoginCredentials = {
 };
 
 function App() {
-  const [email, setEmail] = useState('frentista@posto.com');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [user, setUser] = useState<User | null>(null);
+  const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
-    const storedUser = localStorage.getItem(USER_KEY);
 
-    if (token && storedUser) {
-      setUser(JSON.parse(storedUser) as User);
+    localStorage.removeItem(USER_KEY);
+
+    if (!token) {
+      setInitializing(false);
+      return undefined;
     }
+
+    let active = true;
+
+    const validateStoredToken = async () => {
+      try {
+        const response = await api.get<User>('/me');
+
+        if (active) {
+          setUser(response.data);
+        }
+      } catch (_error) {
+        localStorage.removeItem(TOKEN_KEY);
+
+        if (active) {
+          setMessage('Sessao expirada. Faca login novamente.');
+        }
+      } finally {
+        if (active) {
+          setInitializing(false);
+        }
+      }
+    };
+
+    void validateStoredToken();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const authenticate = async ({ email: nextEmail, password: nextPassword }: LoginCredentials) => {
     const response = await api.post<LoginResponse>('/login', { email: nextEmail, password: nextPassword });
     localStorage.setItem(TOKEN_KEY, response.data.token);
-    localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
+    localStorage.removeItem(USER_KEY);
     setEmail(nextEmail);
-    setPassword(nextPassword);
+    setPassword('');
     setUser(response.data.user);
   };
 
@@ -61,10 +92,21 @@ function App() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setUser(null);
-    setEmail('frentista@posto.com');
-    setPassword('123456');
+    setEmail('');
+    setPassword('');
     setMessage('Sessao encerrada.');
   };
+
+  if (initializing) {
+    return (
+      <main className="login-screen">
+        <PostoLoadingScreen
+          message="Validando sessao existente com o servidor."
+          title="Verificando acesso"
+        />
+      </main>
+    );
+  }
 
   if (user) {
     return <RotinaPosto onLogout={handleLogout} onSwitchUser={handleSwitchUser} user={user} />;
@@ -89,8 +131,10 @@ function App() {
           <label>
             E-mail
             <input
+              autoComplete="username"
               onChange={(event) => setEmail(event.target.value)}
               placeholder="frentista@posto.com"
+              required
               type="email"
               value={email}
             />
@@ -99,14 +143,16 @@ function App() {
           <label>
             Senha
             <input
+              autoComplete="current-password"
               onChange={(event) => setPassword(event.target.value)}
               placeholder="123456"
+              required
               type="password"
               value={password}
             />
           </label>
 
-          <button disabled={loading} type="submit">
+          <button disabled={loading || !email.trim() || !password.trim()} type="submit">
             {loading ? 'Entrando...' : 'Entrar no sistema'}
           </button>
         </form>

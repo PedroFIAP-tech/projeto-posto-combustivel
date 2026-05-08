@@ -1,5 +1,6 @@
 package com.posto.config;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -52,9 +53,11 @@ public class SecurityConfig {
 
   @Bean
   CorsConfigurationSource corsConfigurationSource(
-      @Value("${app.cors.allowed-origins}") String allowedOrigins) {
+      @Value("${app.cors.allowed-origins}") String allowedOrigins,
+      @Value("${app.cors.allowed-origin-patterns:}") String allowedOriginPatterns) {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+    configuration.setAllowedOrigins(splitCorsValues(allowedOrigins));
+    configuration.setAllowedOriginPatterns(splitCorsValues(allowedOriginPatterns));
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
     configuration.setAllowCredentials(true);
@@ -62,6 +65,13 @@ public class SecurityConfig {
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;
+  }
+
+  private List<String> splitCorsValues(String value) {
+    return Arrays.stream(value.split(","))
+        .map(String::trim)
+        .filter(origin -> !origin.isBlank())
+        .toList();
   }
 
   @Bean
