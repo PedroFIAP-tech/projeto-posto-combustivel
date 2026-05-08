@@ -1,10 +1,11 @@
 services:
   - type: web
     name: projeto-posto-combustivel
-    env: docker
+    runtime: docker
     plan: free
     rootDir: backend-java
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./backend-java/Dockerfile
+    dockerContext: ./backend-java
     healthCheckPath: /health
     autoDeploy: true
     envVars:
