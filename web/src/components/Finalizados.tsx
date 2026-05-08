@@ -30,6 +30,7 @@ export function Finalizados({ pedidos }: FinalizadosProps) {
           <thead>
             <tr>
               <th>Bomba</th>
+              <th>Bico</th>
               <th>Combustivel</th>
               <th>Litros</th>
               <th>Valor</th>
@@ -48,6 +49,7 @@ export function Finalizados({ pedidos }: FinalizadosProps) {
                     <strong className="pump-number pump-number-green">{pedido.pumpNumber}</strong>
                   </span>
                 </td>
+                <td>{pedido.nozzleNumber}</td>
                 <td>{pedido.fuel.name}</td>
                 <td>{formatLiters(pedido.liters_delivered)}</td>
                 <td>{formatCurrency(pedido.total_value)}</td>
@@ -59,7 +61,7 @@ export function Finalizados({ pedidos }: FinalizadosProps) {
             ))}
             {pedidos.length === 0 ? (
               <tr>
-                <td className="empty-table" colSpan={6}>
+                <td className="empty-table" colSpan={7}>
                   Nenhum abastecimento finalizado hoje.
                 </td>
               </tr>

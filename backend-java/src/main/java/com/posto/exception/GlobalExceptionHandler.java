@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -33,6 +34,13 @@ public class GlobalExceptionHandler {
     return ResponseEntity
         .badRequest()
         .body(ErrorResponse.of("Dados invalidos.", fields));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException exception) {
+    return ResponseEntity
+        .badRequest()
+        .body(ErrorResponse.of("Corpo da requisicao invalido."));
   }
 
   @ExceptionHandler(Exception.class)

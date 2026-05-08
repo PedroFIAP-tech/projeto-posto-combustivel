@@ -60,6 +60,9 @@ public class OrderService {
     Order order = new Order();
     order.setUser(user);
     order.setFuel(fuel);
+    order.setPumpNumber(request.pumpNumber());
+    order.setNozzleNumber(request.nozzleNumber());
+    order.setMode(request.mode());
     order.setLitersDelivered(liters);
     order.setTotalValue(totalValue);
     order.setStatus(OrderStatus.PENDENTE);

@@ -30,6 +30,7 @@ export function BombasEmAndamento({ pedidos }: BombasEmAndamentoProps) {
           <thead>
             <tr>
               <th>Bomba</th>
+              <th>Bico</th>
               <th>Combustivel</th>
               <th>Litros</th>
               <th>Valor</th>
@@ -48,6 +49,7 @@ export function BombasEmAndamento({ pedidos }: BombasEmAndamentoProps) {
                     <strong className="pump-number pump-number-orange">{pedido.pumpNumber}</strong>
                   </span>
                 </td>
+                <td>{pedido.nozzleNumber}</td>
                 <td>{pedido.fuel.name}</td>
                 <td>{formatLiters(pedido.liters_delivered)}</td>
                 <td>{formatCurrency(pedido.total_value)}</td>
@@ -59,7 +61,7 @@ export function BombasEmAndamento({ pedidos }: BombasEmAndamentoProps) {
             ))}
             {pedidos.length === 0 ? (
               <tr>
-                <td className="empty-table" colSpan={6}>
+                <td className="empty-table" colSpan={7}>
                   Nenhuma bomba aguardando finalizacao agora.
                 </td>
               </tr>

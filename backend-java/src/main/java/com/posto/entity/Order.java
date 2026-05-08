@@ -30,6 +30,16 @@ public class Order {
   @Column(name = "liters_delivered", nullable = false, precision = 12, scale = 3)
   private BigDecimal litersDelivered;
 
+  @Column(name = "pump_number", nullable = false)
+  private Integer pumpNumber;
+
+  @Column(name = "nozzle_number", nullable = false)
+  private Integer nozzleNumber;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private OrderMode mode;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private OrderStatus status = OrderStatus.PENDENTE;
@@ -74,6 +84,30 @@ public class Order {
 
   public void setLitersDelivered(BigDecimal litersDelivered) {
     this.litersDelivered = litersDelivered;
+  }
+
+  public Integer getPumpNumber() {
+    return pumpNumber;
+  }
+
+  public void setPumpNumber(Integer pumpNumber) {
+    this.pumpNumber = pumpNumber;
+  }
+
+  public Integer getNozzleNumber() {
+    return nozzleNumber;
+  }
+
+  public void setNozzleNumber(Integer nozzleNumber) {
+    this.nozzleNumber = nozzleNumber;
+  }
+
+  public OrderMode getMode() {
+    return mode;
+  }
+
+  public void setMode(OrderMode mode) {
+    this.mode = mode;
   }
 
   public OrderStatus getStatus() {

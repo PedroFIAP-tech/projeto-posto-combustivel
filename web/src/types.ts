@@ -2,6 +2,7 @@ export type Fuel = {
   id: number;
   name: string;
   price_per_liter: number;
+  updated_at?: string;
 };
 
 export type User = {
@@ -11,8 +12,13 @@ export type User = {
   role: string;
 };
 
+export type OrderMode = 'AUTOMATICO' | 'MANUAL';
+
 export type Order = {
   id: number;
+  pump_number: number;
+  nozzle_number: number;
+  mode: OrderMode;
   total_value: number;
   liters_delivered: number;
   status: string;
@@ -28,4 +34,5 @@ export type LoginResponse = {
 
 export type PumpOrder = Order & {
   pumpNumber: string;
+  nozzleNumber: string;
 };

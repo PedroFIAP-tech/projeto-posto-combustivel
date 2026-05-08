@@ -516,6 +516,12 @@ O frontend pode usar:
 
 ## Como testar
 
+Para testar como rotina real do posto, usando a tela de simulacao de abastecimento, veja:
+
+```txt
+README_TESTE_ROTINA_POSTO.md
+```
+
 Backend:
 
 ```bash

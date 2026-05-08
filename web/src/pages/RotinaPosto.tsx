@@ -20,8 +20,8 @@ import { FuelPumpIcon } from '../components/FuelPumpIcon';
 import { Finalizados } from '../components/Finalizados';
 import { HistoricoDiaDashboard } from '../components/HistoricoDiaDashboard';
 import { PostoLoadingScreen } from '../components/PostoLoadingScreen';
-import { getHistorico, getPendentes, pagarPedido } from '../services/orders';
-import { Order, PumpOrder, User } from '../types';
+import { criarAbastecimento, getCombustiveis, getHistorico, getPendentes, pagarPedido } from '../services/orders';
+import { Fuel, Order, OrderMode, PumpOrder, User } from '../types';
 
 type RotinaPostoProps = {
   user: User;
@@ -36,6 +36,14 @@ type LoadOptions = {
 type SwitchUserCredentials = {
   email: string;
   password: string;
+};
+
+type SimulatorForm = {
+  pump_number: string;
+  nozzle_number: string;
+  fuel_id: string;
+  liters: string;
+  mode: OrderMode;
 };
 
 type MenuItem = {
@@ -123,10 +131,18 @@ const getMenuSections = (role: string, activeView: 'rotina' | 'historico'): Menu
   ];
 };
 
-const withPumpNumber = (order: Order): PumpOrder => ({
-  ...order,
-  pumpNumber: String(((order.id - 1) % TOTAL_BOMBAS) + 1).padStart(2, '0'),
-});
+const formatEquipmentNumber = (value: number) => String(value).padStart(2, '0');
+
+const withPumpNumber = (order: Order): PumpOrder => {
+  const fallbackPumpNumber = ((order.id - 1) % TOTAL_BOMBAS) + 1;
+  const pumpNumber = order.pump_number || fallbackPumpNumber;
+
+  return {
+    ...order,
+    pumpNumber: formatEquipmentNumber(pumpNumber),
+    nozzleNumber: formatEquipmentNumber(order.nozzle_number || pumpNumber),
+  };
+};
 
 const upsertOrder = (orders: PumpOrder[], order: PumpOrder) => [
   order,
@@ -157,15 +173,43 @@ const formatHeaderTime = (date: Date) =>
     minute: '2-digit',
   }).format(date);
 
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return fallback;
+  }
+
+  const response = (error as { response?: { data?: { message?: string }; status?: number } }).response;
+
+  if (response?.data?.message) {
+    return response.data.message;
+  }
+
+  if (response?.status) {
+    return `${fallback} Codigo HTTP ${response.status}.`;
+  }
+
+  return fallback;
+};
+
 export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) {
   const [activeView, setActiveView] = useState<'rotina' | 'historico'>('rotina');
   const [pendentes, setPendentes] = useState<PumpOrder[]>([]);
   const [finalizados, setFinalizados] = useState<PumpOrder[]>([]);
   const [historicoFinalizados, setHistoricoFinalizados] = useState<PumpOrder[]>([]);
+  const [fuels, setFuels] = useState<Fuel[]>([]);
   const emAndamento = pendentes;
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [payingId, setPayingId] = useState<number | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const [simulationMessage, setSimulationMessage] = useState('');
+  const [simulatorForm, setSimulatorForm] = useState<SimulatorForm>({
+    pump_number: '1',
+    nozzle_number: '1',
+    fuel_id: '',
+    liters: '8.3',
+    mode: 'AUTOMATICO',
+  });
   const [now, setNow] = useState(() => new Date());
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -210,6 +254,36 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
 
     return () => window.clearInterval(polling);
   }, [carregarPedidos]);
+
+  useEffect(() => {
+    let active = true;
+
+    const carregarCombustiveis = async () => {
+      try {
+        const data = await getCombustiveis();
+
+        if (!active) {
+          return;
+        }
+
+        setFuels(data);
+        setSimulatorForm((current) => ({
+          ...current,
+          fuel_id: current.fuel_id || String(data[0]?.id ?? ''),
+        }));
+      } catch (_error) {
+        if (active) {
+          setSimulationMessage('Nao foi possivel carregar os combustiveis para simulacao.');
+        }
+      }
+    };
+
+    void carregarCombustiveis();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const clock = window.setInterval(() => setNow(new Date()), 30000);
@@ -271,6 +345,60 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
       setMessage('Nao foi possivel finalizar o pagamento.');
     } finally {
       setPayingId(null);
+    }
+  };
+
+  const handleSimularAbastecimento = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const pumpNumber = Number(simulatorForm.pump_number);
+    const nozzleNumber = Number(simulatorForm.nozzle_number);
+    const fuelId = Number(simulatorForm.fuel_id);
+    const liters = Number(simulatorForm.liters.replace(',', '.'));
+
+    if (!Number.isInteger(pumpNumber) || pumpNumber < 1) {
+      setSimulationMessage('Informe uma bomba valida.');
+      return;
+    }
+
+    if (!Number.isInteger(nozzleNumber) || nozzleNumber < 1) {
+      setSimulationMessage('Informe um bico valido.');
+      return;
+    }
+
+    if (!fuelId) {
+      setSimulationMessage('Selecione um combustivel.');
+      return;
+    }
+
+    if (!Number.isFinite(liters) || liters <= 0) {
+      setSimulationMessage('Informe uma quantidade de litros maior que zero.');
+      return;
+    }
+
+    setSimulating(true);
+    setSimulationMessage('');
+    setMessage('');
+
+    try {
+      const createdOrder = withPumpNumber(
+        await criarAbastecimento({
+          pump_number: pumpNumber,
+          nozzle_number: nozzleNumber,
+          fuel_id: fuelId,
+          liters,
+          mode: simulatorForm.mode,
+        })
+      );
+      setPendentes((current) => upsertOrder(current, createdOrder));
+      setSimulationMessage(`Abastecimento registrado na bomba ${createdOrder.pumpNumber}, bico ${createdOrder.nozzleNumber}.`);
+      await carregarPedidos({ silent: true });
+    } catch (error) {
+      setSimulationMessage(
+        getApiErrorMessage(error, 'Nao foi possivel simular o abastecimento. Verifique a API e tente novamente.')
+      );
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -362,6 +490,12 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
   const roleLabel = user.role === ADMIN_ROLE ? 'Admin' : 'Frentista';
   const selectedSwitchUser = DEMO_USERS.find((option) => option.email === switchEmail);
   const canSwitchUser = Boolean(selectedSwitchUser && selectedSwitchUser.email !== user.email && switchPassword.trim());
+  const selectedFuel = fuels.find((fuel) => fuel.id === Number(simulatorForm.fuel_id));
+  const litersPreview = Number(simulatorForm.liters.replace(',', '.'));
+  const estimatedValue =
+    selectedFuel && Number.isFinite(litersPreview) && litersPreview > 0
+      ? selectedFuel.price_per_liter * litersPreview
+      : 0;
 
   return (
     <div className="routine-layout">
@@ -579,6 +713,101 @@ export function RotinaPosto({ user, onLogout, onSwitchUser }: RotinaPostoProps) 
                 <strong className="metric-green">{finalizados.length}</strong>
               </div>
             </div>
+          </section>
+        ) : null}
+
+        {!isHistoricoView ? (
+          <section className="simulator-card" aria-label="Simulador de abastecimento">
+            <div className="simulator-heading">
+              <span className="welcome-icon">
+                <FuelPumpIcon />
+              </span>
+              <div>
+                <h2>Simular abastecimento</h2>
+                <p>Registre uma venda pendente como se viesse da bomba.</p>
+              </div>
+            </div>
+
+            <form className="simulator-form" onSubmit={handleSimularAbastecimento}>
+              <label>
+                Bomba
+                <input
+                  min="1"
+                  onChange={(event) =>
+                    setSimulatorForm((current) => ({ ...current, pump_number: event.target.value }))
+                  }
+                  type="number"
+                  value={simulatorForm.pump_number}
+                />
+              </label>
+
+              <label>
+                Bico
+                <input
+                  min="1"
+                  onChange={(event) =>
+                    setSimulatorForm((current) => ({ ...current, nozzle_number: event.target.value }))
+                  }
+                  type="number"
+                  value={simulatorForm.nozzle_number}
+                />
+              </label>
+
+              <label>
+                Combustivel
+                <select
+                  onChange={(event) =>
+                    setSimulatorForm((current) => ({ ...current, fuel_id: event.target.value }))
+                  }
+                  value={simulatorForm.fuel_id}
+                >
+                  {fuels.map((fuel) => (
+                    <option key={fuel.id} value={fuel.id}>
+                      {fuel.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Litros
+                <input
+                  min="0.001"
+                  onChange={(event) =>
+                    setSimulatorForm((current) => ({ ...current, liters: event.target.value }))
+                  }
+                  step="0.001"
+                  type="number"
+                  value={simulatorForm.liters}
+                />
+              </label>
+
+              <label>
+                Modo
+                <select
+                  onChange={(event) =>
+                    setSimulatorForm((current) => ({ ...current, mode: event.target.value as OrderMode }))
+                  }
+                  value={simulatorForm.mode}
+                >
+                  <option value="AUTOMATICO">Automatico</option>
+                  <option value="MANUAL">Manual</option>
+                </select>
+              </label>
+
+              <div className="simulator-preview">
+                <span>Valor previsto</span>
+                <strong>
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(estimatedValue)}
+                </strong>
+              </div>
+
+              <button disabled={simulating || fuels.length === 0} type="submit">
+                {simulating ? 'Registrando...' : 'Registrar abastecimento'}
+              </button>
+            </form>
+
+            {simulationMessage ? <div className="simulator-message">{simulationMessage}</div> : null}
           </section>
         ) : null}
 

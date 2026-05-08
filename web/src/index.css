@@ -39,7 +39,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -930,7 +931,8 @@ button:disabled {
 }
 
 .summary-card,
-.routine-card {
+.routine-card,
+.simulator-card {
   background: var(--white);
   border: 1px solid rgba(17, 24, 39, 0.08);
   border-radius: 8px;
@@ -1010,6 +1012,105 @@ button:disabled {
 .metric-green,
 .pump-number-green {
   color: var(--green-700);
+}
+
+.simulator-card {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 20px;
+}
+
+.simulator-heading {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.simulator-heading h2 {
+  font-size: 19px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.simulator-heading p {
+  color: var(--gray-500);
+  margin: 6px 0 0;
+}
+
+.simulator-form {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 92px 92px minmax(190px, 1fr) 120px 145px 150px 190px;
+}
+
+.simulator-form label {
+  color: var(--gray-700);
+  display: grid;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.simulator-form input,
+.simulator-form select {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  color: var(--gray-950);
+  min-height: 42px;
+  padding: 0 12px;
+  width: 100%;
+}
+
+.simulator-form input:focus,
+.simulator-form select:focus {
+  border-color: rgba(0, 102, 51, 0.45);
+  outline: 3px solid rgba(0, 102, 51, 0.12);
+}
+
+.simulator-preview {
+  background: var(--green-100);
+  border-radius: 8px;
+  min-height: 42px;
+  padding: 9px 12px;
+}
+
+.simulator-preview span,
+.simulator-preview strong {
+  display: block;
+}
+
+.simulator-preview span {
+  color: var(--green-700);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.simulator-preview strong {
+  color: var(--green-900);
+  font-size: 16px;
+  margin-top: 2px;
+}
+
+.simulator-form button {
+  background: var(--green-900);
+  border: 0;
+  border-radius: 8px;
+  color: var(--white);
+  font-weight: 800;
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.simulator-message {
+  background: var(--yellow-100);
+  border: 1px solid rgba(246, 184, 0, 0.32);
+  border-radius: 8px;
+  color: #7a4b00;
+  padding: 11px 12px;
 }
 
 .routine-card {
@@ -2864,6 +2965,7 @@ button:disabled {
   .analytics-scoreboard,
   .analytics-pro-grid,
   .analytics-insight-strip,
+  .simulator-form,
   .history-kpi-grid,
   .history-grid,
   .history-insight-strip,

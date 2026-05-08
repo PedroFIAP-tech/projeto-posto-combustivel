@@ -32,6 +32,7 @@ export function AguardandoPagamento({ pedidos, onPagar, payingId }: AguardandoPa
           <thead>
             <tr>
               <th>Bomba</th>
+              <th>Bico</th>
               <th>Combustivel</th>
               <th>Litros</th>
               <th>Valor</th>
@@ -50,6 +51,7 @@ export function AguardandoPagamento({ pedidos, onPagar, payingId }: AguardandoPa
                     <strong className="pump-number pump-number-yellow">{pedido.pumpNumber}</strong>
                   </span>
                 </td>
+                <td>{pedido.nozzleNumber}</td>
                 <td>{pedido.fuel.name}</td>
                 <td>{formatLiters(pedido.liters_delivered)}</td>
                 <td>{formatCurrency(pedido.total_value)}</td>
@@ -69,7 +71,7 @@ export function AguardandoPagamento({ pedidos, onPagar, payingId }: AguardandoPa
             ))}
             {pedidos.length === 0 ? (
               <tr>
-                <td className="empty-table" colSpan={6}>
+                <td className="empty-table" colSpan={7}>
                   Nenhum pedido aguardando pagamento.
                 </td>
               </tr>
